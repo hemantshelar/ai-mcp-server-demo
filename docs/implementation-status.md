@@ -2,6 +2,8 @@
 
 Tracks progress against [plan.md](../plan.md) (Option A: single in-repo tracker). Update this file in the same branch/PR that completes a step so history stays reviewable.
 
+**Last synced:** 2026-04-18 — aligned with [plan.md](../plan.md) frontmatter and current codebase.
+
 **How to use**
 
 - Set **Status** to `Not started`, `In progress`, or `Done`.
@@ -10,13 +12,25 @@ Tracks progress against [plan.md](../plan.md) (Option A: single in-repo tracker)
 
 | Step | Plan § | Todo id | Area | Status | Branch | PR | Notes |
 |------|--------|---------|------|--------|--------|-----|-------|
-| 1 | Implementation order §1 | `sln-projects` | Solution, projects, `Directory.Build.props`, `IOptions`, user secrets order | Done | | | `ai-mcp-server-demo.sln` (classic `-f sln`), `src/Api`, `src/McpServer`, `src/AiMcpServerDemo.Hosting` with `AddLayeredAppConfiguration` (lowest: env vars, then appsettings, then user secrets in Development). Api samples: `/api/health`, `/api/options`. McpServer is MCP-only (no extra REST routes). |
-| 2 | §2 | `mcp-http`, `local-dev` (partial) | MCP host, tools, `launchSettings` (McpServer), debug | In progress | | | **McpServer:** `ModelContextProtocol.AspNetCore` 1.2.0, `AddMcpServer` + `WithHttpTransport` (stateless) + `WithToolsFromAssembly`, `MapMcp()`. Tools: `Ping`, `Echo`, `GetServerInfo` in `Tools/SampleMcpTools.cs`. **Remaining for this row:** polish `launchSettings`, VS Code compound (`local-dev`). |
-| 3 | §3 | `local-dev` (partial) | API endpoints, health, `launchSettings` (Api), multi-start / `.vscode` | Not started | | | |
+| 1 | Implementation order §1 | `sln-projects` | Solution, projects, `Directory.Build.props`, `IOptions`, user secrets order | Done | | | `ai-mcp-server-demo.sln`, `src/Api`, `src/McpServer`, `src/AiMcpServerDemo.Hosting`, `AddLayeredAppConfiguration` (env → appsettings → user secrets in Development). Api: `/api/health`, `/api/options`. |
+| 2 | §2 | `mcp-http` (done); `local-dev` (open) | MCP Streamable HTTP, tools, ops routes, `launchSettings` (McpServer) | Done | | | **`mcp-http` complete:** `ModelContextProtocol.AspNetCore` 1.2.0, `AddMcpServer` + `WithHttpTransport` (stateless) + **`WithToolsFromAssembly(typeof(SampleMcpTools).Assembly)`** (required—parameterless call scans wrong assembly). `MapMcp()`. Tools: `Ping`, `Echo`, `GetServerInfo` in [`Tools/SampleMcpTools.cs`](../src/McpServer/Tools/SampleMcpTools.cs). `/health` + `/options` (Development only). **Cursor:** use **`http://localhost:5136/`** in `mcp.json`—HTTPS often yields `fetch failed` (dev cert). **Still open (`local-dev`):** `.vscode` compound launch, README notes. |
+| 3 | §3 | `local-dev` (partial) | API, `launchSettings` (Api), multi-start / `.vscode` | In progress | | | Api has [`launchSettings`](../src/Api/Properties/launchSettings.json), `/api/health`, `/api/options`, OpenAPI in dev. **Remaining:** multiple startup projects / `.vscode` compound for Api + McpServer, README. |
 | 4 | §4 | `docker` | Dockerfiles, `.dockerignore`, `docker-compose.yml` | Not started | | | |
 | 5 | §5 | `bicep-azure` | Bicep, RG, `australiaeast`, UAMI + FIC, params | Not started | | | |
 | 6 | §6 | `github-actions` | CI + deploy workflows, OIDC | Not started | | | |
 | 7 | §7 | `readme` | README: local dev, config, Azure, GHA | Not started | | | |
+
+## Todo status (mirrors plan.md)
+
+| Todo id | plan.md status | Notes |
+|---------|------------------|--------|
+| `sln-projects` | completed | |
+| `mcp-http` | completed | |
+| `docker` | pending | |
+| `bicep-azure` | pending | |
+| `github-actions` | pending | |
+| `local-dev` | pending | Partly overlaps step 2–3 (launch compound, docs). |
+| `readme` | pending | |
 
 ## Quick reference (from plan todos)
 
