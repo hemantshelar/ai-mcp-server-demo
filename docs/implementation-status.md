@@ -1,0 +1,31 @@
+# Implementation status
+
+Tracks progress against [plan.md](../plan.md) (Option A: single in-repo tracker). Update this file in the same branch/PR that completes a step so history stays reviewable.
+
+**How to use**
+
+- Set **Status** to `Not started`, `In progress`, or `Done`.
+- Fill **Branch** and **PR** when work begins / merges (links optional: `org/repo#123`).
+- Use **Notes** for deviations from the plan, follow-ups, or ADR references (`docs/adr/…`).
+
+| Step | Plan § | Todo id | Area | Status | Branch | PR | Notes |
+|------|--------|---------|------|--------|--------|-----|-------|
+| 1 | Implementation order §1 | `sln-projects` | Solution, projects, `Directory.Build.props`, `IOptions`, user secrets order | Not started | | | |
+| 2 | §2 | `mcp-http`, `local-dev` (partial) | MCP host, tools, `launchSettings` (McpServer), debug | Not started | | | |
+| 3 | §3 | `local-dev` (partial) | API endpoints, health, `launchSettings` (Api), multi-start / `.vscode` | Not started | | | |
+| 4 | §4 | `docker` | Dockerfiles, `.dockerignore`, `docker-compose.yml` | Not started | | | |
+| 5 | §5 | `bicep-azure` | Bicep, RG, `australiaeast`, UAMI + FIC, params | Not started | | | |
+| 6 | §6 | `github-actions` | CI + deploy workflows, OIDC | Not started | | | |
+| 7 | §7 | `readme` | README: local dev, config, Azure, GHA | Not started | | | |
+
+## Quick reference (from plan todos)
+
+| Todo id | Description |
+|---------|-------------|
+| `sln-projects` | `ai-mcp-server-demo.sln`, Api + McpServer (.NET 9), `Directory.Build.props`, `IOptions`, samples |
+| `mcp-http` | ModelContextProtocol.AspNetCore, Kestrel, health, sample MCP tools |
+| `docker` | Multi-stage Dockerfiles, `.dockerignore`, `docker-compose.yml` |
+| `bicep-azure` | Bicep, `rg-ai-mcp-server-demo-{env}`, `australiaeast`, UAMI + FIC, Dev/Prod params |
+| `github-actions` | GHA CI + deploy, first-run Azure CLI doc, OIDC with UAMI |
+| `local-dev` | `launchSettings`, optional VS Code compound, README prereqs / run / debug |
+| `readme` | README covering local, compose, Azure, GHA |

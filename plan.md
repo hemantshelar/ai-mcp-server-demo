@@ -309,6 +309,7 @@ flowchart LR
 
 ## Files to add (high level)
 
+- [`docs/implementation-status.md`](docs/implementation-status.md) — **implementation tracker** (Option A); update when each plan step merges ([`plan.md`](plan.md) § Implementation order).
 - [`ai-mcp-server-demo.sln`](ai-mcp-server-demo.sln) — solution file.
 - [`src/McpServer/`](src/McpServer/) — MCP ASP.NET Core project + `Program.cs`, `appsettings*.json`, [`Properties/launchSettings.json`](src/McpServer/Properties/launchSettings.json).
 - [`src/Api/`](src/Api/) — Web API project + [`Properties/launchSettings.json`](src/Api/Properties/launchSettings.json).
@@ -320,4 +321,4 @@ flowchart LR
 - [`infra/bicep/main.bicep`](infra/bicep/main.bicep), [`infra/bicep/modules/`](infra/bicep/modules/) (including [`managed-identity-github.bicep`](infra/bicep/modules/managed-identity-github.bicep) or equivalent for **`MI_ai-mcp-server-demo-{env}`** + FIC), [`infra/bicep/parameters/main.dev.bicepparam`](infra/bicep/parameters/main.dev.bicepparam), [`infra/bicep/parameters/main.prod.bicepparam`](infra/bicep/parameters/main.prod.bicepparam)
 - [`.github/workflows/ci.yml`](.github/workflows/ci.yml), [`.github/workflows/deploy-azure.yml`](.github/workflows/deploy-azure.yml)
 
-No changes to unrelated user rules; no extra markdown beyond a root **README** unless you want docs-only files omitted.
+Repo docs: root [**README**](README.md) when added, [**plan.md**](plan.md), and [**docs/implementation-status.md**](docs/implementation-status.md) for step-by-step progress.
