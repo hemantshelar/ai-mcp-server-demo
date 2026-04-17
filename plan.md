@@ -10,7 +10,7 @@ todos:
     status: completed
   - id: docker
     content: Multi-stage Dockerfiles, .dockerignore, docker-compose.yml with two services
-    status: pending
+    status: completed
   - id: bicep-azure
     content: Bicep scoped to rg-ai-mcp-server-demo-{env}, location australiaeast, UAMI + FIC, Dev/Prod params
     status: pending

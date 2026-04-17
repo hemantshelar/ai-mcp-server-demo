@@ -47,6 +47,25 @@ dotnet dev-certs https --trust
 
 Values match [src/Api/Properties/launchSettings.json](src/Api/Properties/launchSettings.json) and [src/McpServer/Properties/launchSettings.json](src/McpServer/Properties/launchSettings.json).
 
+## Docker Compose
+
+Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or compatible engine). From the repository root:
+
+```bash
+docker compose up --build -d
+```
+
+| App | URL (host) | Health |
+|-----|------------|--------|
+| **Api** | http://localhost:5101 | `/api/health` |
+| **McpServer** | http://localhost:5136 | `/health` |
+
+Containers use `ASPNETCORE_ENVIRONMENT=Production` and listen on **8080** internally; Compose publishes **5101** and **5136** on the host to match the Development HTTP ports above. Use **`http://localhost:5136/`** for Cursor MCP when the stack is running.
+
+```bash
+docker compose down
+```
+
 ### Run without debugging (two terminals)
 
 ```bash
