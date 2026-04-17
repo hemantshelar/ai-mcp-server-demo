@@ -2,7 +2,7 @@
 
 Tracks progress against [plan.md](../plan.md) (Option A: single in-repo tracker). Update this file in the same branch/PR that completes a step so history stays reviewable.
 
-**Last synced:** 2026-04-18 — aligned with [plan.md](../plan.md) frontmatter and current codebase (`docker` completed on branch `feature/004-docker`).
+**Last synced:** 2026-04-18 — aligned with [plan.md](../plan.md) (Azure **Container Apps** hosting + phased Bicep; `docker` on `feature/004-docker`).
 
 **How to use**
 
@@ -16,9 +16,9 @@ Tracks progress against [plan.md](../plan.md) (Option A: single in-repo tracker)
 | 2 | §2 | `mcp-http` | MCP Streamable HTTP, tools, ops routes, `launchSettings` (McpServer) | Done | | | `ModelContextProtocol.AspNetCore` 1.2.0, **`WithToolsFromAssembly(typeof(SampleMcpTools).Assembly)`**, `MapMcp()`, tools in [`SampleMcpTools.cs`](../src/McpServer/Tools/SampleMcpTools.cs), `/health` + `/options` (dev). Cursor MCP URL: **`http://localhost:5136/`**. |
 | 3 | §3 | `local-dev` | API, `launchSettings`, `.vscode`, README local | Done | feature/003-local-dev | | [`.vscode/launch.json`](../.vscode/launch.json) compound **Api + McpServer (http)**; [tasks.json](../.vscode/tasks.json) `build-solution`. [README.md](../README.md): prerequisites, ports, `dotnet run`, VS / VS Code, OpenAPI `/openapi/v1.json`, Cursor snippet. |
 | 4 | §4 | `docker` | Dockerfiles, `.dockerignore`, `docker-compose.yml` | Done | feature/004-docker | | Multi-stage [`docker/Api.Dockerfile`](../docker/Api.Dockerfile), [`docker/McpServer.Dockerfile`](../docker/McpServer.Dockerfile); root [`.dockerignore`](../.dockerignore); [`docker-compose.yml`](../docker-compose.yml). Containers listen on **8080**; host ports **5101** (Api), **5136** (McpServer). |
-| 5 | §5 | `bicep-azure` | Bicep, RG, `australiaeast`, UAMI + FIC, params | Not started | | | |
+| 5 | §5 | `bicep-azure` | Bicep, RG, `australiaeast`, UAMI + FIC, phased ACR + Container Apps, params | Not started | | | Plan target: **Azure Container Apps** (two apps) + **ACR**; phased: OIDC foundation then runtime stack — see [plan.md](../plan.md) § *Azure (Bicep)*. |
 | 6 | §6 | `github-actions` | CI + deploy workflows, OIDC | Not started | | | |
-| 7 | §7 | `readme` | README: local dev, config, Azure, GHA | Not started | | | |
+| 7 | §7 | `readme` | README: local dev, config, Azure, GHA | Not started | | | Local dev, configuration, Docker Compose, OpenAPI, and Cursor MCP are already documented in [README.md](../README.md); remaining scope for this step is Azure (RG, `australiaeast`, UAMI/FIC, bootstrap vs OIDC) and GitHub Actions/OIDC narrative. |
 
 ## Todo status (mirrors plan.md)
 
@@ -39,7 +39,7 @@ Tracks progress against [plan.md](../plan.md) (Option A: single in-repo tracker)
 | `sln-projects` | `ai-mcp-server-demo.sln`, Api + McpServer (.NET 9), `Directory.Build.props`, `IOptions`, samples |
 | `mcp-http` | ModelContextProtocol.AspNetCore, Kestrel, health, sample MCP tools |
 | `docker` | Multi-stage Dockerfiles, `.dockerignore`, `docker-compose.yml` |
-| `bicep-azure` | Bicep, `rg-ai-mcp-server-demo-{env}`, `australiaeast`, UAMI + FIC, Dev/Prod params |
+| `bicep-azure` | Phased Bicep: RG + UAMI + FIC; then ACR + Container Apps (Api/McpServer); `australiaeast`, Dev/Prod params |
 | `github-actions` | GHA CI + deploy, first-run Azure CLI doc, OIDC with UAMI |
 | `local-dev` | `launchSettings`, optional VS Code compound, README prereqs / run / debug |
 | `readme` | README covering local, compose, Azure, GHA |

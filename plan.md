@@ -1,6 +1,6 @@
 ---
 name: .NET MCP Docker Solution
-overview: "Multi-project .NET solution: HTTP MCP server (MCP C# SDK), Web API, documented local run/debug on developer machines, Docker Compose, Azure Bicep (rg-ai-mcp-server-demo-{env}, Australia East), UAMI MI_ai-mcp-server-demo-{env} + GitHub OIDC FIC, and GitHub Actions after an initial Azure CLI bootstrap."
+overview: "Multi-project .NET solution: HTTP MCP server (MCP C# SDK), Web API, documented local run/debug on developer machines, Docker Compose, Azure Bicep (rg-ai-mcp-server-demo-{env}, Australia East). Azure hosting target: Azure Container Apps for Api + McpServer; UAMI MI_ai-mcp-server-demo-{env} + GitHub OIDC FIC; GitHub Actions after an initial Azure CLI bootstrap."
 todos:
   - id: sln-projects
     content: Create ai-mcp-server-demo.sln, Api + McpServer (.NET 9), Directory.Build.props, IOptions, samples
@@ -12,7 +12,7 @@ todos:
     content: Multi-stage Dockerfiles, .dockerignore, docker-compose.yml with two services
     status: completed
   - id: bicep-azure
-    content: Bicep scoped to rg-ai-mcp-server-demo-{env}, location australiaeast, UAMI + FIC, Dev/Prod params
+    content: Phased Bicep—(1) RG + UAMI + FIC for GitHub OIDC; (2) ACR + Container Apps env/apps for Api/McpServer—rg-ai-mcp-server-demo-{env}, australiaeast, Dev/Prod params
     status: pending
   - id: github-actions
     content: GHA CI + deploy; first-run Azure CLI bootstrap doc; OIDC via UAMI client id thereafter
@@ -21,7 +21,7 @@ todos:
     content: launchSettings (stable ports/URLs), optional VS Code compound launch, README prereqs + run/debug
     status: completed
   - id: readme
-    content: "README: local prereqs, run/debug, compose, Azure rg+FIC, GHA OIDC"
+    content: "README: local prereqs, run/debug, compose, Azure rg+Container Apps+ACR+FIC, GHA OIDC"
     status: pending
 isProject: false
 ---
@@ -40,6 +40,7 @@ Microsoft’s **Model Context Protocol (MCP) C# SDK** targets modern **.NET** (e
 | MCP transport in Docker | **ASP.NET Core** hosting with the AspNetCore package                                                 | **stdio** MCP is a poor fit for normal Docker networking; **HTTP/SSE** maps cleanly to exposed ports and load balancers.                                                                                                                   |
 | API                     | **ASP.NET Core Web API**                                                                             | Minimal APIs or controllers; **OpenAPI** via Swashbuckle or built-in `.NET 9` OpenAPI; **health checks** for Compose/orchestrators.                                                                                                        |
 | Containers              | Official images: `mcr.microsoft.com/dotnet/sdk` (build), `mcr.microsoft.com/dotnet/aspnet` (runtime) | Microsoft’s documented baseline for .NET in Docker.                                                                                                                                                                                        |
+| Azure runtime           | **Azure Container Apps** + **Azure Container Registry**                                              | Two apps (Api, McpServer); revisions and ingress managed by Container Apps—not AKS for this repo.                                                                                                                                          |
 
 ## Solution layout (proposed)
 
@@ -73,7 +74,20 @@ ai-mcp-server-demo/
 
 ## Azure (Bicep) — Dev and Prod
 
+### Hosting decision: Azure Container Apps
+
+**Api** and **McpServer** run in Azure as **two separate Azure Container Apps** (two container images from **Azure Container Registry**), inside a **Container Apps** managed environment per region/stack. This plan **does not** target **Azure Kubernetes Service (AKS)**; operations stay at the Container Apps / revisions / ingress layer unless requirements change later.
+
 **Goal**: One **parameterized** Bicep entry (`infra/bicep/main.bicep`) with **two** parameter files — **`parameters/main.dev.bicepparam`** and **`parameters/main.prod.bicepparam`** — so Dev and Prod differ by **SKUs and feature flags** without duplicating logic; **resource group name** and **Azure region** are **fixed** per this plan. Use **`.bicepparam`** (supported by current Bicep CLI / ARM) for clear per-environment inputs; alternatively JSON parameter files work if you standardize on `az deployment` JSON params.
+
+### Phased Bicep (recommended)
+
+Deploy in **two waves** so GitHub Actions OIDC works before the full runtime stack exists:
+
+1. **Phase 1 — CI/CD foundation**: Resource group **`rg-ai-mcp-server-demo-{env}`**, **user-assigned managed identity** **`MI_ai-mcp-server-demo-{env}`**, **federated identity credentials** for GitHub Actions (OIDC), and **RBAC** so that identity can run subsequent deployments. No Container Apps resources required yet if you only need `azure/login` + infra validation.
+2. **Phase 2 — Container Apps runtime**: **Azure Container Registry**, **Container Apps environment**, **two Container Apps** (Api, McpServer), optional **Log Analytics** for diagnostics, **AcrPull** / workload identities as needed. CI/CD then **builds**, **pushes** images to ACR, and **updates** revisions (e.g. via Bicep or `az containerapp update`).
+
+Parameter files and modules can use **feature flags** or separate deployments so Phase 1 ships first without commenting out large templates.
 
 ### Resource group and region (fixed)
 
@@ -84,13 +98,15 @@ All deployable resources for a given stack live in **one resource group per envi
 
 Deployments target **`az deployment group create`** (or equivalent) scoped to that resource group at **`australiaeast`**. Do not split Dev/Prod across regions in this plan.
 
-**Typical resources** for containerized ASP.NET Core + MCP (exact modules can start minimal and grow):
+**Typical resources** for containerized ASP.NET Core + MCP on **Azure Container Apps** (exact modules can start minimal and grow; align Phase 2 with this list):
 
 - **Resource group**: As above — **one RG per environment**, no shared RG between Dev and Prod.
-- **Azure Container Registry (ACR)**: Shared or per-env; images tagged by Git SHA + environment.
-- **Azure Container Apps** (common choice for multi-container): two apps (McpServer, Api) or one revision per service; internal ingress for API if MCP calls API privately; public HTTPS for MCP/API as needed. **Alternative**: two **Web App for Containers** — Bicep modules stay swappable.
+- **Azure Container Registry (ACR)**: Per-env or shared; images tagged by Git SHA + environment; Container Apps pull from ACR (managed identity **AcrPull**).
+- **Container Apps environment** + **two Container Apps** (one for **McpServer**, one for **Api**): separate revisions, scaling rules, and ingress as needed; use **internal** ingress for Api if MCP should call Api only inside the environment, or expose both publicly per your threat model.
 - **Log Analytics** workspace for Container Apps diagnostics (optional but aligns with observability best practices).
-- **Workload identities (apps)**: User-assigned or system-assigned MIs on Container Apps (or App Service) for **AcrPull** and runtime Azure SDK calls; keep separate from the **deployment** identity below.
+- **Workload identities (apps)**: User-assigned or system-assigned MIs on Container Apps for **AcrPull** and runtime Azure SDK calls; keep **separate** from the **deployment** UAMI **`MI_ai-mcp-server-demo-{env}`** used by GitHub Actions.
+
+Other Azure container hosting options (e.g. **Web App for Containers**) are **out of scope** for this repo unless you explicitly adopt them later.
 
 ### User-assigned managed identity for GitHub Actions (OIDC)
 
@@ -119,9 +135,14 @@ Implement in Bicep using the **`Microsoft.ManagedIdentity/userAssignedIdentities
 
 Store **`AZURE_CLIENT_ID`** (UAMI client id), **`AZURE_TENANT_ID`**, and **`AZURE_SUBSCRIPTION_ID`** in **GitHub Environment** or repository variables as appropriate—**not** the identity’s name string, which is for Azure resource correlation only.
 
-**Modules** under `infra/bicep/modules/` (illustrative — implement the minimal set first):
+**Modules** under `infra/bicep/modules/` (illustrative — Phase 1 can ship **`managed-identity-github.bicep`** only; Phase 2 adds the rest):
 
-- `acr.bicep`, `container-apps.bicep` (or `app-service.bicep`), `log-analytics.bicep`, **`managed-identity-github.bicep`** (UAMI + FIC per env) — each with clear `param` contracts.
+- **`managed-identity-github.bicep`**: UAMI **`MI_ai-mcp-server-demo-{env}`** + FIC for GitHub OIDC.
+- **`acr.bicep`**: Container registry for images.
+- **`container-apps-env.bicep`** / **`container-apps-apps.bicep`** (or a single **`container-apps.bicep`**): managed environment + **Api** and **McpServer** apps.
+- **`log-analytics.bicep`** (optional): workspace wired to Container Apps diagnostics.
+
+Each module should have a clear `param` contract so Phase 1 and Phase 2 compose cleanly.
 
 **Secrets**: Do **not** put secrets in `.bicepparam` committed to git. Use **Azure Key Vault references** or **Container Apps secrets** populated by the pipeline / manual seeding; parameter files hold **Key Vault URI** or **secret names**, not values.
 
@@ -132,7 +153,7 @@ Store **`AZURE_CLIENT_ID`** (UAMI client id), **`AZURE_TENANT_ID`**, and **`AZUR
 | Workflow | Role |
 |----------|------|
 | **`ci.yml`** | On PR / push to `main`: `dotnet restore/build/test`, optionally `docker build` to validate Dockerfiles (no push). |
-| **`deploy-azure.yml`** | **Build** images, **push** to ACR, **`az deployment`** (or `az containerapp update`) using the correct **`.bicepparam`**. Trigger: `workflow_dispatch` and/or push to environment branches/tags per your policy; use **`jobs.<job>.environment: dev \| prod`** so GitHub **Environment** protection rules, secrets, and approval gates apply (especially **Prod**). After bootstrap, **`azure/login`** uses **OIDC** with **`MI_ai-mcp-server-demo-{env}`**’s **client id**. |
+| **`deploy-azure.yml`** | **Build** images, **push** to ACR, deploy/update **Azure Container Apps** via **`az deployment group create`** (full Bicep) and/or **`az containerapp update`** for new revisions using the correct **`.bicepparam`**. Trigger: `workflow_dispatch` and/or push to environment branches/tags per your policy; use **`jobs.<job>.environment: dev \| prod`** so GitHub **Environment** protection rules, secrets, and approval gates apply (especially **Prod**). After bootstrap, **`azure/login`** uses **OIDC** with **`MI_ai-mcp-server-demo-{env}`**’s **client id**. |
 
 **Auth to Azure (after bootstrap)**:
 
@@ -303,9 +324,9 @@ flowchart LR
 2. Implement MCP host + sample tools; add **`Properties/launchSettings.json`** with fixed **Development** ports/URLs; verify with **`dotnet run`** and **IDE debugging** (breakpoints).
 3. Implement API + health + sample endpoints; **`launchSettings`** for Api; **multiple startup projects** (VS) and/or **`.vscode` compound launch** (VS Code) so both apps start for local debugging.
 4. Add Dockerfiles + `.dockerignore` + `docker-compose.yml`; verify `docker compose up --build`.
-5. Add **`infra/bicep`** (`main.bicep`, `modules/` including **UAMI `MI_ai-mcp-server-demo-{env}`** + **GitHub FIC**, `parameters/main.dev.bicepparam`, `parameters/main.prod.bicepparam`); scope all resources to **`rg-ai-mcp-server-demo-{env}`** at **`australiaeast`**; validate with `az bicep build` / what-if; document **first-run manual** `az deployment group` / bootstrap steps.
+5. Add **`infra/bicep`** (`main.bicep`, `modules/` — start with **UAMI `MI_ai-mcp-server-demo-{env}`** + **GitHub FIC**, then add **ACR + Container Apps** for Api/McpServer per **Phased Bicep** above; `parameters/main.dev.bicepparam`, `parameters/main.prod.bicepparam`); scope all resources to **`rg-ai-mcp-server-demo-{env}`** at **`australiaeast`**; validate with `az bicep build` / what-if; document **first-run manual** `az deployment group` / bootstrap steps.
 6. Add **`.github/workflows`** (`ci.yml`, `deploy-azure.yml` with **`environment: dev`** / **`prod`**); **`azure/login`** OIDC using each UAMI’s **client id**; document mapping GitHub Environments to FIC subjects.
-7. README: **Local development** (prerequisites from the plan section, clone/restore, user secrets, **`dotnet run` vs IDE debug**, ports/URLs, when Docker is needed, **no Azure for day-to-day dev**); plus ports, health/OpenAPI/MCP URL, **configuration precedence**, **Azure** ( **`rg-ai-mcp-server-demo-{env}`**, **`australiaeast`**, **`MI_ai-mcp-server-demo-{env}`**, FIC, **first-run Azure CLI** vs **OIDC**), and GitHub variables.
+7. README: **Local development** (prerequisites from the plan section, clone/restore, user secrets, **`dotnet run` vs IDE debug**, ports/URLs, when Docker is needed, **no Azure for day-to-day dev**); plus ports, health/OpenAPI/MCP URL, **configuration precedence**, **Azure** ( **`rg-ai-mcp-server-demo-{env}`**, **`australiaeast`**, **Azure Container Apps** + ACR overview, **`MI_ai-mcp-server-demo-{env}`**, FIC, **first-run Azure CLI** vs **OIDC**), and GitHub variables.
 
 ### Local dev execution plan (step 3 / todo `local-dev`)
 
@@ -355,7 +376,7 @@ Use this as the checklist for the branch that completes **`local-dev`** (IDE mul
 - [`docker/McpServer.Dockerfile`](docker/McpServer.Dockerfile), [`docker/Api.Dockerfile`](docker/Api.Dockerfile) — multi-stage.
 - [`docker-compose.yml`](docker-compose.yml) — two services, ports, build contexts.
 - [`.dockerignore`](.dockerignore)
-- [`infra/bicep/main.bicep`](infra/bicep/main.bicep), [`infra/bicep/modules/`](infra/bicep/modules/) (including [`managed-identity-github.bicep`](infra/bicep/modules/managed-identity-github.bicep) or equivalent for **`MI_ai-mcp-server-demo-{env}`** + FIC), [`infra/bicep/parameters/main.dev.bicepparam`](infra/bicep/parameters/main.dev.bicepparam), [`infra/bicep/parameters/main.prod.bicepparam`](infra/bicep/parameters/main.prod.bicepparam)
+- [`infra/bicep/main.bicep`](infra/bicep/main.bicep), [`infra/bicep/modules/`](infra/bicep/modules/) (**[`managed-identity-github.bicep`](infra/bicep/modules/managed-identity-github.bicep)** for **`MI_ai-mcp-server-demo-{env}`** + FIC; **`acr.bicep`**, **`container-apps*.bicep`**, optional **`log-analytics.bicep`** for Phase 2), [`infra/bicep/parameters/main.dev.bicepparam`](infra/bicep/parameters/main.dev.bicepparam), [`infra/bicep/parameters/main.prod.bicepparam`](infra/bicep/parameters/main.prod.bicepparam)
 - [`.github/workflows/ci.yml`](.github/workflows/ci.yml), [`.github/workflows/deploy-azure.yml`](.github/workflows/deploy-azure.yml)
 
 Repo docs: root [**README.md**](README.md), [**plan.md**](plan.md), and [**docs/implementation-status.md**](docs/implementation-status.md) for step-by-step progress.
