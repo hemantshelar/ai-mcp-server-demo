@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <UserSecretsId>5b4be65d-2dee-4720-a0fa-5d4ccf763c73</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.15" />
+    <ProjectReference Include="..\AiMcpServerDemo.Hosting\AiMcpServerDemo.Hosting.csproj" />
+  </ItemGroup>
+
+</Project>

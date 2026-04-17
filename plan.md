@@ -4,7 +4,7 @@ overview: "Multi-project .NET solution: HTTP MCP server (MCP C# SDK), Web API, d
 todos:
   - id: sln-projects
     content: Create ai-mcp-server-demo.sln, Api + McpServer (.NET 9), Directory.Build.props, IOptions, samples
-    status: pending
+    status: completed
   - id: mcp-http
     content: Wire ModelContextProtocol.AspNetCore, Kestrel port, health, sample MCP tools
     status: pending

@@ -10,7 +10,7 @@ Tracks progress against [plan.md](../plan.md) (Option A: single in-repo tracker)
 
 | Step | Plan § | Todo id | Area | Status | Branch | PR | Notes |
 |------|--------|---------|------|--------|--------|-----|-------|
-| 1 | Implementation order §1 | `sln-projects` | Solution, projects, `Directory.Build.props`, `IOptions`, user secrets order | Not started | | | |
+| 1 | Implementation order §1 | `sln-projects` | Solution, projects, `Directory.Build.props`, `IOptions`, user secrets order | Done | | | `ai-mcp-server-demo.sln` (classic `-f sln`), `src/Api`, `src/McpServer`, `src/AiMcpServerDemo.Hosting` with `AddLayeredAppConfiguration` (lowest: env vars, then appsettings, then user secrets in Development). Sample `/api/health`, `/api/options` and `/health`, `/options`. |
 | 2 | §2 | `mcp-http`, `local-dev` (partial) | MCP host, tools, `launchSettings` (McpServer), debug | Not started | | | |
 | 3 | §3 | `local-dev` (partial) | API endpoints, health, `launchSettings` (Api), multi-start / `.vscode` | Not started | | | |
 | 4 | §4 | `docker` | Dockerfiles, `.dockerignore`, `docker-compose.yml` | Not started | | | |
