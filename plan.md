@@ -19,7 +19,7 @@ todos:
     status: pending
   - id: local-dev
     content: launchSettings (stable ports/URLs), optional VS Code compound launch, README prereqs + run/debug
-    status: pending
+    status: completed
   - id: readme
     content: "README: local prereqs, run/debug, compose, Azure rg+FIC, GHA OIDC"
     status: pending
@@ -307,18 +307,55 @@ flowchart LR
 6. Add **`.github/workflows`** (`ci.yml`, `deploy-azure.yml` with **`environment: dev`** / **`prod`**); **`azure/login`** OIDC using each UAMI’s **client id**; document mapping GitHub Environments to FIC subjects.
 7. README: **Local development** (prerequisites from the plan section, clone/restore, user secrets, **`dotnet run` vs IDE debug**, ports/URLs, when Docker is needed, **no Azure for day-to-day dev**); plus ports, health/OpenAPI/MCP URL, **configuration precedence**, **Azure** ( **`rg-ai-mcp-server-demo-{env}`**, **`australiaeast`**, **`MI_ai-mcp-server-demo-{env}`**, FIC, **first-run Azure CLI** vs **OIDC**), and GitHub variables.
 
+### Local dev execution plan (step 3 / todo `local-dev`)
+
+Use this as the checklist for the branch that completes **`local-dev`** (IDE multi-start + minimal docs). Full narrative README polish can still land in **step 7** (`readme` todo); this step must leave enough for a developer to run and debug without reading the whole plan.
+
+**Current ports (from `launchSettings` — do not change silently without updating docs)**
+
+| App | HTTP | HTTPS |
+|-----|------|--------|
+| **Api** | `http://localhost:5101` | `https://localhost:7268` |
+| **McpServer** | `http://localhost:5136` | `https://localhost:7137` |
+
+**Deliverables**
+
+1. **VS Code (commit to repo)**  
+   - **[`.vscode/launch.json`](.vscode/launch.json):** two launch configs (e.g. `Api (http)`, `McpServer (http)`) using **`dotnet` type** / **`project`** path under `${workspaceFolder}`, **`ASPNETCORE_ENVIRONMENT=Development`**.  
+   - **Compound** configuration that starts **both** (label e.g. `Api + McpServer (http)`).  
+   - Optional **[`.vscode/tasks.json`](.vscode/tasks.json):** `dotnet build` on the solution for pre-launch if you want a consistent build step.
+
+2. **Visual Studio**  
+   - No mandatory repo file: document **Solution → Configure Startup Projects → Multiple startup projects** (Api + McpServer, both **Start**) in README or `docs/local-development.md`.
+
+3. **Documentation (minimal; aligns with `local-dev` todo)**  
+   - Add **[`README.md`](README.md)** (if missing) or **[`docs/local-development.md`](docs/local-development.md)** with: **prerequisites** (.NET 9 SDK), **`dotnet restore`**, **two-terminal** `dotnet run` commands with `--project` paths, **port table** above, **OpenAPI** in Development (after `MapOpenApi()`, document the OpenAPI endpoint your template exposes—often under `/openapi/`—verify in running app), **MCP / Cursor**: recommend **`http://localhost:5136/`** for `mcp.json` (HTTPS often causes **`fetch failed`** with dev certs).  
+   - One line pointing to **configuration precedence** (User Secrets → appsettings → env) and `dotnet user-secrets` per project.
+
+**Acceptance criteria**
+
+- [x] **F5** in VS Code compound launches Api and McpServer; breakpoints hit in both processes. *(Implemented on `feature/003-local-dev`.)*  
+- [x] Documented ports match **`launchSettings.json`**.  
+- [x] A new developer can find **run**, **debug**, and **Cursor MCP URL** without reading Azure/Docker sections.
+
+**Out of scope for this step**
+
+- Dockerfiles / Compose (**`docker`** todo).  
+- Full Azure/GHA README (**step 7** / **`readme`** todo)—only **local** content here.
+
 ## Files to add (high level)
 
 - [`docs/implementation-status.md`](docs/implementation-status.md) — **implementation tracker** (Option A); update when each plan step merges ([`plan.md`](plan.md) § Implementation order).
 - [`ai-mcp-server-demo.sln`](ai-mcp-server-demo.sln) — solution file.
+- [`README.md`](README.md) — prerequisites, local run/debug, ports, OpenAPI, Cursor MCP URL (expand in **`readme`** todo for Docker/Azure/GHA).
 - [`src/McpServer/`](src/McpServer/) — MCP ASP.NET Core project + `Program.cs`, `appsettings*.json`, [`Properties/launchSettings.json`](src/McpServer/Properties/launchSettings.json).
 - [`src/Api/`](src/Api/) — Web API project + [`Properties/launchSettings.json`](src/Api/Properties/launchSettings.json).
 - Optional: [`global.json`](global.json) — pin .NET SDK version.
-- Optional: [`.vscode/launch.json`](.vscode/launch.json), [`.vscode/tasks.json`](.vscode/tasks.json) — compound debug for VS Code.
+- [`.vscode/launch.json`](.vscode/launch.json), [`.vscode/tasks.json`](.vscode/tasks.json) — compound **Api + McpServer (http)** for VS Code.
 - [`docker/McpServer.Dockerfile`](docker/McpServer.Dockerfile), [`docker/Api.Dockerfile`](docker/Api.Dockerfile) — multi-stage.
 - [`docker-compose.yml`](docker-compose.yml) — two services, ports, build contexts.
 - [`.dockerignore`](.dockerignore)
 - [`infra/bicep/main.bicep`](infra/bicep/main.bicep), [`infra/bicep/modules/`](infra/bicep/modules/) (including [`managed-identity-github.bicep`](infra/bicep/modules/managed-identity-github.bicep) or equivalent for **`MI_ai-mcp-server-demo-{env}`** + FIC), [`infra/bicep/parameters/main.dev.bicepparam`](infra/bicep/parameters/main.dev.bicepparam), [`infra/bicep/parameters/main.prod.bicepparam`](infra/bicep/parameters/main.prod.bicepparam)
 - [`.github/workflows/ci.yml`](.github/workflows/ci.yml), [`.github/workflows/deploy-azure.yml`](.github/workflows/deploy-azure.yml)
 
-Repo docs: root [**README**](README.md) when added, [**plan.md**](plan.md), and [**docs/implementation-status.md**](docs/implementation-status.md) for step-by-step progress.
+Repo docs: root [**README.md**](README.md), [**plan.md**](plan.md), and [**docs/implementation-status.md**](docs/implementation-status.md) for step-by-step progress.

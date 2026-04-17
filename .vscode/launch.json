@@ -1,0 +1,42 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Api (http)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-solution",
+      "program": "${workspaceFolder}/src/Api/bin/Debug/net9.0/Api.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/Api",
+      "stopAtEntry": false,
+      "console": "internalConsole",
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "http://localhost:5101"
+      }
+    },
+    {
+      "name": "McpServer (http)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-solution",
+      "program": "${workspaceFolder}/src/McpServer/bin/Debug/net9.0/McpServer.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/McpServer",
+      "stopAtEntry": false,
+      "console": "internalConsole",
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "http://localhost:5136"
+      }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Api + McpServer (http)",
+      "configurations": ["Api (http)", "McpServer (http)"],
+      "stopAll": true
+    }
+  ]
+}
