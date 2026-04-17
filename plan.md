@@ -7,7 +7,7 @@ todos:
     status: completed
   - id: mcp-http
     content: Wire ModelContextProtocol.AspNetCore, Kestrel port, health, sample MCP tools
-    status: pending
+    status: completed
   - id: docker
     content: Multi-stage Dockerfiles, .dockerignore, docker-compose.yml with two services
     status: pending
