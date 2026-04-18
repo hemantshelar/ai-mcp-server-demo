@@ -70,6 +70,22 @@ jobs:
             --resource-group "${{ env.RG_NAME }}" \
             --template-file infra/bicep/main.bicep \
             --parameters "infra/bicep/parameters/main.${{ inputs.environment }}.bicepparam"
+      - name: Debug Azure deployment (resource group, on failure)
+        if: failure() && inputs.deployment_scope == 'resource-group'
+        run: |
+          set +e
+          echo "::group::Root deployment failed operations"
+          az deployment operation group list \
+            --resource-group "${{ env.RG_NAME }}" \
+            --name "${{ env.DEPLOYMENT_NAME }}" \
+            --query "[?properties.provisioningState=='Failed']" -o json
+          echo "::endgroup::"
+          echo "::group::Nested deployment acr failed operations"
+          az deployment operation group list \
+            --resource-group "${{ env.RG_NAME }}" \
+            --name "acr" \
+            --query "[?properties.provisioningState=='Failed']" -o json 2>/dev/null || echo "(could not list nested deployment acr)"
+          echo "::endgroup::"
 
       - name: Deploy Bicep (subscription — subscription.bicep, full stack)
         if: inputs.deployment_scope == 'subscription'

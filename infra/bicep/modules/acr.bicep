@@ -7,7 +7,9 @@ param location string
 param environment string
 
 // Must stay in sync with acrRegistryName in ../main.bicep.
-var registryName = toLower('acrmcp${environment}${take(uniqueString(resourceGroup().id, environment), 11)}')
+// ACR allows only a-z0-9 — suffix is hex from guid() (hyphens stripped).
+var registrySuffix = take(replace(guid(resourceGroup().id, environment), '-', ''), 11)
+var registryName = toLower('acrmcp${environment}${registrySuffix}')
 
 resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
   name: registryName
