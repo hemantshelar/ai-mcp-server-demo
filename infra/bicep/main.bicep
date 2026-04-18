@@ -43,7 +43,7 @@ module acr 'modules/acr.bicep' = {
   }
 }
 
-var acrPushRoleDefinitionId = '8313e01d-4867-4548-9f17-63e7d96a1134'
+var acrPushRoleDefinitionId = '8311e382-0749-4cb8-b61a-304f252e45ec'
 
 resource acrForRbac 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
   name: acrRegistryName
@@ -85,4 +85,8 @@ output acrName string = acr.outputs.acrName
 output apiFqdn string = containerApps.outputs.apiFqdn
 output mcpFqdn string = containerApps.outputs.mcpFqdn
 output pullIdentityId string = containerApps.outputs.pullIdentityId
+
+
+
+
 
