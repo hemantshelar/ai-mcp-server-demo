@@ -1,7 +1,7 @@
-/* Deploy Phase 1 GitHub OIDC identity into an existing resource group (create RG with az first). */
+/* Phase 1: GitHub OIDC UAMI. Phase 2: ACR + Container Apps (Api + McpServer). */
 targetScope = 'resourceGroup'
 
-@description('Region for the managed identity; default matches resource group location.')
+@description('Region for resources; default matches resource group location.')
 param location string = resourceGroup().location
 
 @minLength(3)
@@ -15,6 +15,12 @@ param githubOrg string
 @minLength(1)
 param githubRepo string
 
+@description('Full image reference for Api container (ACR or public registry).')
+param apiImage string
+
+@description('Full image reference for McpServer container.')
+param mcpImage string
+
 module githubOidc 'modules/managed-identity-github.bicep' = {
   name: 'githubOidc'
   params: {
@@ -25,6 +31,32 @@ module githubOidc 'modules/managed-identity-github.bicep' = {
   }
 }
 
+module acr 'modules/acr.bicep' = {
+  name: 'acr'
+  params: {
+    location: location
+    environment: environment
+    githubActionsPrincipalId: githubOidc.outputs.principalId
+  }
+}
+
+module containerApps 'modules/container-apps.bicep' = {
+  name: 'containerApps'
+  params: {
+    location: location
+    environment: environment
+    acrId: acr.outputs.acrId
+    apiImage: apiImage
+    mcpImage: mcpImage
+  }
+}
+
 output clientId string = githubOidc.outputs.clientId
 output principalId string = githubOidc.outputs.principalId
 output managedIdentityName string = githubOidc.outputs.managedIdentityName
+
+output acrLoginServer string = acr.outputs.loginServer
+output acrName string = acr.outputs.acrName
+output apiFqdn string = containerApps.outputs.apiFqdn
+output mcpFqdn string = containerApps.outputs.mcpFqdn
+output pullIdentityId string = containerApps.outputs.pullIdentityId

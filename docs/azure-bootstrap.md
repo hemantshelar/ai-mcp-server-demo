@@ -13,17 +13,19 @@ Repeat the steps for **`dev`** and **`prod`** (separate resource groups and iden
 
 ## Option A — Bicep (recommended)
 
-Shared module (always used):
+Shared modules:
 
 - [`infra/bicep/modules/managed-identity-github.bicep`](../infra/bicep/modules/managed-identity-github.bicep) — UAMI + FIC + **Contributor** on the resource group
+- [`infra/bicep/modules/acr.bicep`](../infra/bicep/modules/acr.bicep) — **Azure Container Registry** (Basic) + **AcrPush** for the GitHub deployment identity
+- [`infra/bicep/modules/container-apps.bicep`](../infra/bicep/modules/container-apps.bicep) — Log Analytics, Container Apps environment, pull managed identity (**AcrPull** on ACR), two **Container Apps** (`ca-api-{env}`, `ca-mcp-{env}`)
 
 ### A1 — Subscription deployment (creates the resource group)
 
-Use [`infra/bicep/subscription.bicep`](../infra/bicep/subscription.bicep) to create **`rg-ai-mcp-server-demo-{env}`** and deploy Phase 1 in one step. **`location`** defaults to **`australiaeast`**; override in parameters if needed.
+Use [`infra/bicep/subscription.bicep`](../infra/bicep/subscription.bicep) to create **`rg-ai-mcp-server-demo-{env}`** and deploy **Phase 1 + Phase 2** (UAMI, ACR, Container Apps) in one step. **`location`** defaults to **`australiaeast`**; override in parameters if needed.
 
 - [`infra/bicep/parameters/subscription.dev.bicepparam`](../infra/bicep/parameters/subscription.dev.bicepparam) / [`subscription.prod.bicepparam`](../infra/bicep/parameters/subscription.prod.bicepparam)
 
-**1.** Edit the `.bicepparam` file: set **`githubOrg`** and **`githubRepo`** (optional: add `param location = '...'` to override region).
+**1.** Edit the `.bicepparam` file: set **`githubOrg`** and **`githubRepo`**; set **`apiImage`** and **`mcpImage`** to full image references (defaults use a public sample image on port **8080** for first deploy; after **`az acr push`**, switch to **`${acrLoginServer}/your-repo:tag`** from deployment outputs). Optional: add `param location = '...'` to override region.
 
 **2.** Deploy at **subscription** scope (requires rights to deploy at subscription level, e.g. **Contributor** on the subscription or a custom role that can create resource groups):
 
@@ -55,8 +57,8 @@ az bicep build --file infra/bicep/subscription.bicep
 
 If you created the RG with `az group create` (or the portal), deploy with:
 
-- [`infra/bicep/main.bicep`](../infra/bicep/main.bicep) — resource group scope
-- [`infra/bicep/parameters/main.dev.bicepparam`](../infra/bicep/parameters/main.dev.bicepparam) / [`main.prod.bicepparam`](../infra/bicep/parameters/main.prod.bicepparam)
+- [`infra/bicep/main.bicep`](../infra/bicep/main.bicep) — resource group scope (same Phase 2 resources as subscription deployment)
+- [`infra/bicep/parameters/main.dev.bicepparam`](../infra/bicep/parameters/main.dev.bicepparam) / [`main.prod.bicepparam`](../infra/bicep/parameters/main.prod.bicepparam) — include **`apiImage`** / **`mcpImage`**
 
 ```bash
 az deployment group create \
@@ -172,8 +174,12 @@ Use **Settings → Secrets and variables → Actions → Variables** (environmen
 
 ## 8. Validate
 
-Run workflow **Deploy Azure (Phase 1 — OIDC)** from the Actions tab, choose **`dev`** or **`prod`**, and confirm **`azure/login`** and **`az account show`** succeed.
+Run workflow **Deploy Azure (Bicep + build)** from the Actions tab, choose **`dev`** or **`prod`**, and confirm **`azure/login`**, **Bicep deployment**, and **dotnet build/test** succeed. The workflow deploys at **resource group** scope — the RG **`rg-ai-mcp-server-demo-{env}`** must already exist (initial **`subscription.bicep`** or **`az group create`**).
 
 ---
 
-Phase 2 (ACR, Container Apps) will extend `infra/bicep` — see [plan.md](../plan.md).
+## Phase 2 (Bicep): ACR + Container Apps
+
+Phase 2 is included when you deploy [`subscription.bicep`](../infra/bicep/subscription.bicep) or [`main.bicep`](../infra/bicep/main.bicep) as above. Outputs include **`acrLoginServer`**, **`apiFqdn`**, **`mcpFqdn`**, and **`pullIdentityId`** (the user-assigned identity used for **AcrPull**).
+
+**Next steps after deploy:** build and push **Api** and **McpServer** images to ACR (GitHub Actions or local Docker), then update **`apiImage`** / **`mcpImage`** in the `.bicepparam` file and redeploy, or update revisions with `az containerapp update` / pipeline—see [plan.md](../plan.md).
