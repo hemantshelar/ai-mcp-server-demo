@@ -2,9 +2,13 @@ name: CI
 
 on:
   push:
-    branches: [main, master]
+    branches:
+      - main
+      - feature/005-enable-github-actions
   pull_request:
-    branches: [main, master]
+    branches:
+      - main
+      - feature/005-enable-github-actions
 
 permissions:
   contents: read

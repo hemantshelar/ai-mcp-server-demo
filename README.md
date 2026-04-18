@@ -110,3 +110,5 @@ Place under `mcpServers` in [`.cursor/mcp.json`](https://cursor.com/docs/context
 
 - [plan.md](plan.md) — architecture, Azure, CI/CD
 - [docs/implementation-status.md](docs/implementation-status.md) — delivery checklist
+- [docs/github-actions-setup.md](docs/github-actions-setup.md) — GitHub Environments + Azure OIDC variables for deploy workflow
+- [docs/azure-bootstrap.md](docs/azure-bootstrap.md) — Azure CLI / Bicep bootstrap for managed identity + federated credential

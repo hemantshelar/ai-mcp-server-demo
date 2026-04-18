@@ -158,7 +158,9 @@ If you use a different subject pattern (branch or tag), change **`--subject`** a
 
 ## 7. GitHub configuration
 
-For each GitHub **Environment** (`dev`, `prod`) used by the deploy workflow:
+Step-by-step instructions (create **Environments**, add **Variables** — this repo’s workflow uses `vars.*`, not repository secrets by default): **[docs/github-actions-setup.md](github-actions-setup.md)**.
+
+Summary — values to configure:
 
 | Variable | Value |
 |----------|--------|
@@ -166,7 +168,7 @@ For each GitHub **Environment** (`dev`, `prod`) used by the deploy workflow:
 | **`AZURE_TENANT_ID`** | Entra tenant id: `az account show --query tenantId -o tsv` |
 | **`AZURE_SUBSCRIPTION_ID`** | Subscription id |
 
-Configure under **Repository → Settings → Environments → `dev` / `prod` → Environment variables**.
+Use **Settings → Secrets and variables → Actions → Variables** (environment and/or repository). See the linked doc for the full UI walkthrough.
 
 ## 8. Validate
 
