@@ -1,6 +1,14 @@
-# OIDC via user-assigned MI → deploy infra/bicep/main.bicep (RG scope), then build/test.
-# Requires resource group rg-ai-mcp-server-demo-{env} to exist (one-time subscription.bicep or az group create).
-# MI must have Contributor on that RG (Phase 1 Bicep / bootstrap).
+# OIDC (user-assigned MI) → deploy Bicep, then build/test.
+#
+# deployment_scope:
+#   resource-group — az deployment group create (main.bicep). Needs RG rg-ai-mcp-server-demo-{env}
+#     and MI Contributor on that RG.
+#   subscription — az deployment sub create (subscription.bicep). Creates/updates the RG and all
+#     resources (UAMI, FIC, ACR, Container Apps). The MI must have subscription-scope permission to
+#     run subscription deployments (e.g. Contributor on the subscription), not only on the RG.
+#
+# GitHub runs the workflow file from the repo DEFAULT branch — merge this file there or you will
+# still see the old "Phase 1" workflow without Bicep steps.
 
 name: Deploy Azure (Bicep + build)
 
@@ -14,6 +22,16 @@ on:
         options:
           - dev
           - prod
+      deployment_scope:
+        description: |
+          subscription = full stack + create/update resource group (needs subscription-level RBAC on MI).
+          resource-group = deploy into existing RG only (MI Contributor on that RG).
+        required: true
+        type: choice
+        default: resource-group
+        options:
+          - resource-group
+          - subscription
 
 permissions:
   id-token: write
@@ -26,6 +44,7 @@ jobs:
     env:
       RG_NAME: rg-ai-mcp-server-demo-${{ inputs.environment }}
       DEPLOYMENT_NAME: gha-${{ github.run_id }}
+      AZURE_DEPLOYMENT_REGION: australiaeast
     steps:
       - uses: actions/checkout@v4
 
@@ -42,7 +61,8 @@ jobs:
       - name: Ensure Azure Bicep CLI
         run: az bicep version || az bicep install
 
-      - name: Deploy Bicep (resource group)
+      - name: Deploy Bicep (resource group — main.bicep)
+        if: inputs.deployment_scope == 'resource-group'
         run: |
           set -euo pipefail
           az deployment group create \
@@ -51,10 +71,29 @@ jobs:
             --template-file infra/bicep/main.bicep \
             --parameters "infra/bicep/parameters/main.${{ inputs.environment }}.bicepparam"
 
-      - name: Show deployment outputs
+      - name: Deploy Bicep (subscription — subscription.bicep, full stack)
+        if: inputs.deployment_scope == 'subscription'
+        run: |
+          set -euo pipefail
+          az deployment sub create \
+            --name "${{ env.DEPLOYMENT_NAME }}" \
+            --location "${{ env.AZURE_DEPLOYMENT_REGION }}" \
+            --template-file infra/bicep/subscription.bicep \
+            --parameters "infra/bicep/parameters/subscription.${{ inputs.environment }}.bicepparam"
+
+      - name: Show deployment outputs (resource group)
+        if: inputs.deployment_scope == 'resource-group'
         run: |
           az deployment group show \
             --resource-group "${{ env.RG_NAME }}" \
+            --name "${{ env.DEPLOYMENT_NAME }}" \
+            --query properties.outputs \
+            -o json
+
+      - name: Show deployment outputs (subscription)
+        if: inputs.deployment_scope == 'subscription'
+        run: |
+          az deployment sub show \
             --name "${{ env.DEPLOYMENT_NAME }}" \
             --query properties.outputs \
             -o json

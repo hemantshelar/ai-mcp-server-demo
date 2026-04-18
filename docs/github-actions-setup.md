@@ -1,6 +1,6 @@
 # GitHub Actions: end-to-end setup for Azure OIDC (deploy workflow)
 
-Goal: run **[`.github/workflows/deploy-azure.yml`](../.github/workflows/deploy-azure.yml)** successfully — **Azure login (OIDC)** → **`az deployment group create`** with **`infra/bicep/main.bicep`** (RG scope) → **deployment outputs** → **dotnet build/test**.
+Goal: run **[`.github/workflows/deploy-azure.yml`](../.github/workflows/deploy-azure.yml)** successfully — **Azure login (OIDC)** → **Bicep deploy** (see **deployment scope** below) → **deployment outputs** → **dotnet build/test**.
 
 The workflow reads **GitHub Actions variables** (`vars.*`), **not** repository secrets, unless you change the YAML.
 
@@ -8,7 +8,7 @@ The workflow reads **GitHub Actions variables** (`vars.*`), **not** repository s
 
 ## Prerequisites (complete before GitHub steps)
 
-1. **Azure Phase 1 is deployed** — resource group **`rg-ai-mcp-server-demo-{env}`**, user-assigned managed identity **`MI_ai-mcp-server-demo-{env}`**, federated credential (FIC) for GitHub, and **Contributor** on that RG for the MI. Use [azure-bootstrap.md](azure-bootstrap.md) (Bicep or CLI). The deploy workflow runs **`az deployment group create`** into that RG; it does **not** create the RG (use **`subscription.bicep`** or **`az group create`** once if needed).
+1. **Azure resources** — Prefer **deployment_scope = subscription** in the workflow (see Step 5) to create/update **RG + UAMI + FIC + ACR + Container Apps** from **`subscription.bicep`**, *if* the GitHub MI has **subscription-level** permission to run subscription deployments (e.g. **Contributor** on the subscription — assign **after** the MI exists from a first bootstrap). Alternatively: bootstrap once with [azure-bootstrap.md](azure-bootstrap.md); then use **deployment_scope = resource-group** so the MI only needs **Contributor on that resource group** (uses **`main.bicep`**; the RG must already exist).
 2. **FIC subject matches this repo** — must be exactly:
    - `repo:<YourGitHubOrgOrUser>/<YourRepoName>:environment:dev`
    - `repo:<YourGitHubOrgOrUser>/<YourRepoName>:environment:prod`  
@@ -98,12 +98,16 @@ At this point the job can resolve:
 3. **Run workflow** (button on the right).
 4. Branch: **`feature/001-plan`** (this repo’s default branch — pick the branch that contains `.github/workflows/deploy-azure.yml`).
 5. **Environment** dropdown: choose **`dev`** or **`prod`** (must match a GitHub Environment you created).
-6. **Run workflow**.
+6. **Deployment scope** — **`resource-group`** (default): deploys **`main.bicep`** into **`rg-ai-mcp-server-demo-{env}`**; RG must exist. **`subscription`**: deploys **`subscription.bicep`** (creates/updates the RG and full stack). Requires **extra subscription-level RBAC** on **`MI_ai-mcp-server-demo-{env}`** for `az deployment sub create` to succeed (RG-only Contributor is not enough).
+7. **Run workflow**.
 
 ### What “good” looks like
 
 - **Azure login (OIDC)** — green.
 - **Verify Azure session** — green; logs show subscription/tenant info from `az account show`.
+- **Ensure Azure Bicep CLI** — green.
+- **Deploy Bicep** (resource group or subscription step) — green.
+- **Show deployment outputs** — JSON including **`acrLoginServer`**, **`apiFqdn`**, etc.
 - **Restore, build, test** — green.
 
 ---
@@ -112,6 +116,9 @@ At this point the job can resolve:
 
 | Symptom | What to verify |
 |--------|-------------------|
+| Run shows **Deploy Azure (Phase 1)** / only **verify-and-build** with no Bicep steps | GitHub uses the workflow from the **default** branch. Merge the branch that contains the current **[`.github/workflows/deploy-azure.yml`](../.github/workflows/deploy-azure.yml)** into **default**, or run the workflow from a branch that already has the updated file (Actions → Run workflow → select branch). |
+| **No ACR** after deploy | You ran an old workflow **without** Bicep, or **resource-group** deploy failed (missing RG) so the Bicep step never completed. Check logs for **Deploy Bicep** steps; fix RG or switch to **subscription** scope + subscription-level RBAC. |
+| **Authorization failed** on `az deployment sub create` | Grant **`MI_ai-mcp-server-demo-{env}`** a subscription-scope role that allows subscription-scoped deployments (e.g. **Contributor** on the subscription), or use **resource-group** scope after creating the RG manually. |
 | **Could not authenticate** / OIDC failed | FIC subject in Azure = `repo:ORG/REPO:environment:dev` (or `prod`) with exact ORG/REPO casing. |
 | **Variable not found** / empty `vars` | Variables are under **Actions → Variables**, not only **Secrets**. Names must be exactly **`AZURE_CLIENT_ID`**, **`AZURE_TENANT_ID`**, **`AZURE_SUBSCRIPTION_ID`**. |
 | **Wrong subscription** after login | **`AZURE_SUBSCRIPTION_ID`** repository variable wrong; or set per-environment subscription in Step 3 style on each env. |
