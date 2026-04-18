@@ -9,7 +9,8 @@ param environment string
 @description('Principal (object) id of MI_ai-mcp-server-demo-{env} — allows CI to push images.')
 param githubActionsPrincipalId string
 
-var registryName = 'acrmcp${environment}${take(uniqueString(resourceGroup().id, environment), 11)}'
+var registryName = toLower('acrmcp${environment}${take(uniqueString(resourceGroup().id, environment), 11)}')
+// ACR: lowercase alphanumeric only; uniqueString can emit uppercase.
 
 resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
   name: registryName
@@ -40,3 +41,4 @@ output loginServer string = acr.properties.loginServer
 
 output acrId string = acr.id
 output acrName string = acr.name
+
