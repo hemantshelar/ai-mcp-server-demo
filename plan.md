@@ -167,7 +167,7 @@ Each module should have a clear `param` contract so Phase 1 and Phase 2 compose 
 
 | Workflow | Role |
 |----------|------|
-| **`ci.yml`** | On PR / push to `main`: `dotnet restore/build/test`, optionally `docker build` to validate Dockerfiles (no push to Azure). |
+| **`ci.yml`** | On PR / push to default branch / configured branches: `dotnet restore/build/test`, optionally `docker build` to validate Dockerfiles (no push to Azure). |
 | **`deploy-azure.yml`** | **Phase 1 (CI/CD–only Azure):** After bootstrap, use **`azure/login`** (OIDC) + **`dotnet build/test`** (and optional **`docker build`**); **no** ACR push or Container Apps update until Phase 2 exists. **Phase 2:** Add jobs to **push** images to **ACR** and deploy/update **Azure Container Apps** via **`az deployment group create`** and/or **`az containerapp update`** with the correct **`.bicepparam`**. Use **`jobs.<job>.environment: dev \| prod`** so GitHub **Environment** rules and variables apply. |
 
 **Auth to Azure (after bootstrap)**:

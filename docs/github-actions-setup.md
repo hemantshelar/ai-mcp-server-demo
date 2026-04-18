@@ -13,7 +13,7 @@ The workflow reads **GitHub Actions variables** (`vars.*`), **not** repository s
    - `repo:<YourGitHubOrgOrUser>/<YourRepoName>:environment:dev`
    - `repo:<YourGitHubOrgOrUser>/<YourRepoName>:environment:prod`  
    `<YourGitHubOrgOrUser>` and `<YourRepoName>` are **case-sensitive** and must match the repo GitHub shows in the URL bar.
-3. **Workflow file is on the branch GitHub runs** — usually **`main`**. Merge your workflow so **Actions** can see **Deploy Azure (Phase 1 — OIDC)**.
+3. **Workflow file is on the repository default branch** — this repo uses **`feature/001-plan`**. Merge your workflow there so **Actions** lists **Deploy Azure (Phase 1 — OIDC)** (GitHub reads workflows from the **default** branch).
 4. **Collect three Azure values** (from `az` or portal):
 
    ```bash
@@ -96,7 +96,7 @@ At this point the job can resolve:
 1. **Actions** tab.
 2. Left sidebar → **Deploy Azure (Phase 1 — OIDC)**.
 3. **Run workflow** (button on the right).
-4. Branch: **`main`** (or your default branch that contains the workflow).
+4. Branch: **`feature/001-plan`** (this repo’s default branch — pick the branch that contains `.github/workflows/deploy-azure.yml`).
 5. **Environment** dropdown: choose **`dev`** or **`prod`** (must match a GitHub Environment you created).
 6. **Run workflow**.
 
