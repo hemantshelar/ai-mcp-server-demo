@@ -11,6 +11,17 @@ Repeat the steps for **`dev`** and **`prod`** (separate resource groups and iden
 
 **Prerequisites:** [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) (`az`), rights to create resource groups, managed identities, role assignments, and federated credentials in your subscription.
 
+**Resource providers (Phase 2 — run once per subscription):** If deployment fails with **`MissingSubscriptionRegistration`** for **`Microsoft.ContainerRegistry`**, register the provider (and related ones used by Container Apps) before deploying Bicep or re-running GitHub Actions:
+
+```bash
+az account set --subscription "<YOUR_SUBSCRIPTION_ID>"
+az provider register --namespace Microsoft.ContainerRegistry --wait
+az provider register --namespace Microsoft.App --wait
+az provider register --namespace Microsoft.OperationalInsights --wait
+```
+
+Check state: `az provider show -n Microsoft.ContainerRegistry --query registrationState -o tsv` (expect **`Registered`**). See [Register resource provider](https://learn.microsoft.com/azure/azure-resource-manager/troubleshooting/error-register-resource-provider).
+
 ## Option A — Bicep (recommended)
 
 Shared modules:
