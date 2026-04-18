@@ -2,7 +2,7 @@
 
 Tracks progress against [plan.md](../plan.md) (Option A: single in-repo tracker). Update this file in the same branch/PR that completes a step so history stays reviewable.
 
-**Last synced:** 2026-04-18 — Phase 1 **Bicep** + **GitHub Actions OIDC**; **Phase 2** Bicep (**ACR** + **Container Apps** modules, wired in `main.bicep` / `subscription.bicep`) in branch **feature/006-bicep-azure-acr**. CI push + revision update workflow still optional follow-up.
+**Last synced:** 2026-04-18 — **Phase 2** Bicep + **deploy-azure** RG deploy verified after provider registration, RG **UAA** on deployment MI, AcrPush GUID fix, ACR naming; troubleshooting captured in [plan.md](../plan.md) § Azure / GHA deployment fixes. Optional: **docker push** + revision updates.
 
 **How to use**
 
@@ -16,7 +16,7 @@ Tracks progress against [plan.md](../plan.md) (Option A: single in-repo tracker)
 | 2 | §2 | `mcp-http` | MCP Streamable HTTP, tools, ops routes, `launchSettings` (McpServer) | Done | | | `ModelContextProtocol.AspNetCore` 1.2.0, **`WithToolsFromAssembly(typeof(SampleMcpTools).Assembly)`**, `MapMcp()`, tools in [`SampleMcpTools.cs`](../src/McpServer/Tools/SampleMcpTools.cs), `/health` + `/options` (dev). Cursor MCP URL: **`http://localhost:5136/`**. |
 | 3 | §3 | `local-dev` | API, `launchSettings`, `.vscode`, README local | Done | feature/003-local-dev | | [`.vscode/launch.json`](../.vscode/launch.json) compound **Api + McpServer (http)**; [tasks.json](../.vscode/tasks.json) `build-solution`. [README.md](../README.md): prerequisites, ports, `dotnet run`, VS / VS Code, OpenAPI `/openapi/v1.json`, Cursor snippet. |
 | 4 | §4 | `docker` | Dockerfiles, `.dockerignore`, `docker-compose.yml` | Done | feature/004-docker | | Multi-stage [`docker/Api.Dockerfile`](../docker/Api.Dockerfile), [`docker/McpServer.Dockerfile`](../docker/McpServer.Dockerfile); root [`.dockerignore`](../.dockerignore); [`docker-compose.yml`](../docker-compose.yml). Containers listen on **8080**; host ports **5101** (Api), **5136** (McpServer). |
-| 5 | §5 | `bicep-azure` | Bootstrap RG + UAMI + FIC + RBAC; Bicep Phase 1 + Phase 2 ACR + Container Apps | In progress | feature/006-bicep-azure-acr | | **Phase 1 + 2 Bicep:** [`subscription.bicep`](../infra/bicep/subscription.bicep), [`main.bicep`](../infra/bicep/main.bicep), [`modules/managed-identity-github.bicep`](../infra/bicep/modules/managed-identity-github.bicep), [`modules/acr.bicep`](../infra/bicep/modules/acr.bicep), [`modules/container-apps.bicep`](../infra/bicep/modules/container-apps.bicep), `.bicepparam` (`apiImage` / `mcpImage`); [azure-bootstrap.md](azure-bootstrap.md). **Follow-up:** GHA docker push + `containerapp update` (optional). |
+| 5 | §5 | `bicep-azure` | Bootstrap RG + UAMI + FIC + RBAC; Bicep Phase 1 + Phase 2 ACR + Container Apps | Done | feature/001-plan | | **Phase 1 + 2** deployed via GHA + `main.bicep`; see [plan.md](../plan.md) deployment fixes. **Follow-up:** push app images, point `apiImage`/`mcpImage` at ACR. |
 | 6 | §6 | `github-actions` | `ci.yml` + `deploy-azure.yml`, OIDC | Done | feature/005-enable-github-actions | | [`.github/workflows/ci.yml`](../.github/workflows/ci.yml), [deploy-azure.yml](../.github/workflows/deploy-azure.yml); [github-actions-setup.md](github-actions-setup.md). Deploy workflow = **`azure/login`** + **`az deployment group create`** (`main.bicep`) + build/test. Default branch / CI branches per repo (`feature/001-plan`, etc.). |
 | 7 | §7 | `readme` | README: local dev, config, Azure, GHA | Not started | | | Deep links in README to [azure-bootstrap.md](azure-bootstrap.md) + [github-actions-setup.md](github-actions-setup.md); optional single “Azure & CI/CD” section consolidating RG naming, default branch, and Phase 2 pointer. |
 
@@ -27,7 +27,7 @@ Tracks progress against [plan.md](../plan.md) (Option A: single in-repo tracker)
 | `sln-projects` | completed | |
 | `mcp-http` | completed | |
 | `docker` | completed | |
-| `bicep-azure` | pending | Phase 1 + Phase 2 Bicep modules merged in progress on **feature/006-bicep-azure-acr**; mark **completed** when PR merges |
+| `bicep-azure` | completed | RG-scoped deploy verified; plan § Azure / GHA deployment fixes |
 | `github-actions` | completed | |
 | `local-dev` | completed | |
 | `readme` | pending | |
@@ -46,6 +46,6 @@ Tracks progress against [plan.md](../plan.md) (Option A: single in-repo tracker)
 
 ## Next step (recommended order)
 
-1. **`readme` todo** — Add a short **Azure & GitHub Actions** subsection in [README.md](../README.md) pointing to [docs/azure-bootstrap.md](azure-bootstrap.md) and [docs/github-actions-setup.md](github-actions-setup.md) (default branch, environments, variables).
+1. **`readme` todo** — Add a short **Azure & GitHub Actions** subsection in [README.md](../README.md) pointing to [docs/azure-bootstrap.md](azure-bootstrap.md) and [docs/github-actions-setup.md](github-actions-setup.md) (default branch, environments, variables, deployment troubleshooting — see [plan.md](../plan.md) § Azure / GHA deployment fixes).
 
-2. **`bicep-azure` Phase 2** — [`modules/acr.bicep`](../infra/bicep/modules/acr.bicep) + [`modules/container-apps.bicep`](../infra/bicep/modules/container-apps.bicep); **deploy-azure.yml** applies **`main.bicep`**. **Still optional:** **docker push** to ACR + **`az containerapp update`** (or param-only redeploy) for app images.
+2. **App images in Azure** — **docker push** Api/McpServer to ACR; set **`apiImage`** / **`mcpImage`** in `.bicepparam` or **`az containerapp update`** (see [plan.md](../plan.md) next steps).

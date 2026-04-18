@@ -1,14 +1,7 @@
-# OIDC (user-assigned MI) → deploy Bicep, then build/test.
+# OIDC (user-assigned MI) deploy Bicep, dotnet test, then optionally build/push Api+McpServer to ACR and update Container Apps.
 #
-# deployment_scope:
-#   resource-group — az deployment group create (main.bicep). Needs RG rg-ai-mcp-server-demo-{env}
-#     and MI Contributor on that RG.
-#   subscription — az deployment sub create (subscription.bicep). Creates/updates the RG and all
-#     resources (UAMI, FIC, ACR, Container Apps). The MI must have subscription-scope permission to
-#     run subscription deployments (e.g. Contributor on the subscription), not only on the RG.
-#
-# GitHub runs the workflow file from the repo DEFAULT branch — merge this file there or you will
-# still see the old "Phase 1" workflow without Bicep steps.
+# deployment_scope: resource-group | subscription (see previous docs).
+# push_app_images: after successful job steps before this one, build/push api + mcpserver (tag = commit SHA) and az containerapp update.
 
 name: Deploy Azure (Bicep + build)
 
@@ -32,6 +25,11 @@ on:
         options:
           - resource-group
           - subscription
+      push_app_images:
+        description: After deploy, build/push Api + McpServer Docker images to ACR and update Container App revisions
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   id-token: write
@@ -70,6 +68,7 @@ jobs:
             --resource-group "${{ env.RG_NAME }}" \
             --template-file infra/bicep/main.bicep \
             --parameters "infra/bicep/parameters/main.${{ inputs.environment }}.bicepparam"
+
       - name: Debug Azure deployment (resource group, on failure)
         if: failure() && inputs.deployment_scope == 'resource-group'
         run: |
@@ -126,3 +125,30 @@ jobs:
           dotnet restore
           dotnet build --no-restore -c Release
           dotnet test --no-build -c Release --verbosity minimal
+
+      - name: Ensure Container Apps extension
+        if: inputs.push_app_images
+        run: az extension add --name containerapp --upgrade -y 2>/dev/null || true
+
+      - name: Build and push images to ACR, update Container Apps
+        if: inputs.push_app_images
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          ACR_NAME=$(az acr list -g "${{ env.RG_NAME }}" --query "sort_by([?starts_with(name, 'acrmcp')], &name)[0].name" -o tsv)
+          if [ -z "$ACR_NAME" ] || [ "$ACR_NAME" = "null" ]; then
+            echo "No ACR named acrmcp* in ${{ env.RG_NAME }}; skip image push."
+            exit 0
+          fi
+          LOGIN_SERVER=$(az acr show -n "$ACR_NAME" -g "${{ env.RG_NAME }}" --query loginServer -o tsv)
+          echo "Using ACR $ACR_NAME ($LOGIN_SERVER), tag $IMAGE_TAG"
+          az acr login -n "$ACR_NAME"
+          docker build -f docker/Api.Dockerfile -t "${LOGIN_SERVER}/api:${IMAGE_TAG}" .
+          docker build -f docker/McpServer.Dockerfile -t "${LOGIN_SERVER}/mcpserver:${IMAGE_TAG}" .
+          docker push "${LOGIN_SERVER}/api:${IMAGE_TAG}"
+          docker push "${LOGIN_SERVER}/mcpserver:${IMAGE_TAG}"
+          az containerapp update -g "${{ env.RG_NAME }}" -n "ca-api-${{ inputs.environment }}" --container-name api --image "${LOGIN_SERVER}/api:${IMAGE_TAG}"
+          az containerapp update -g "${{ env.RG_NAME }}" -n "ca-mcp-${{ inputs.environment }}" --container-name mcp --image "${LOGIN_SERVER}/mcpserver:${IMAGE_TAG}"
+          echo "Updated Container Apps to ${LOGIN_SERVER}/api:${IMAGE_TAG} and .../mcpserver:${IMAGE_TAG}"
+

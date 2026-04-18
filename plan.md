@@ -12,10 +12,10 @@ todos:
     content: Multi-stage Dockerfiles, .dockerignore, docker-compose.yml with two services
     status: completed
   - id: bicep-azure
-    content: "Phase 1 + 2 Bicep: UAMI/FIC + acr.bicep + container-apps.bicep (Api + McpServer), australiaeast; optional GHA push/update"
-    status: pending
+    content: "Phase 1+2 Bicep (UAMI, ACR, Container Apps) + RG deploy verified; optional docker push / revision updates — see § Azure / GHA deployment fixes"
+    status: completed
   - id: github-actions
-    content: GHA workflows—CI + OIDC via UAMI; Phase 1 deploy = login + build/test only (no ACR/ACA until Phase 2); bootstrap steps live with Azure CLI doc
+    content: "ci.yml + deploy-azure (OIDC, Bicep main/subscription scope, debug ops on failure, dotnet build/test); docs in github-actions-setup + azure-bootstrap"
     status: completed
   - id: local-dev
     content: launchSettings (stable ports/URLs), optional VS Code compound launch, README prereqs + run/debug
@@ -123,6 +123,27 @@ Deployments target **`az deployment group create`** (or equivalent) scoped to th
 
 Other Azure container hosting options (e.g. **Web App for Containers**) are **out of scope** for this repo unless you explicitly adopt them later.
 
+### Azure / GitHub Actions deployment fixes (troubleshooting log)
+
+This subsection records **manual steps and template changes** that were required before **`deploy-azure.yml`** could successfully apply **`infra/bicep/main.bicep`** at resource-group scope. Details also live in [`docs/azure-bootstrap.md`](docs/azure-bootstrap.md) and [`docs/github-actions-setup.md`](docs/github-actions-setup.md).
+
+**Issues and fixes (in rough order of discovery)**
+
+1. **Workflow not deploying Bicep** — GitHub uses the workflow definition from the **branch you select** (and commonly the **default** branch for the Actions list). Ensure **[`deploy-azure.yml`](.github/workflows/deploy-azure.yml)** on that branch includes **`az deployment group create`** / **`az deployment sub create`**, not only `azure/login` + `dotnet build`.
+2. **`MissingSubscription` when running `az role assignment create` locally** — Select subscription context: **`az login`**, **`az account set --subscription <id>`**, and use **`--subscription <id>`** on the role command if the CLI has no default subscription.
+3. **`Microsoft.Authorization/roleAssignments/write` denied** (template deploy from GitHub MI) — **Contributor** on the resource group is not enough to create role assignments. Grant **`MI_ai-mcp-server-demo-{env}`** **User Access Administrator** (or **Owner**) on **`rg-ai-mcp-server-demo-{env}`** in addition to Contributor, so Bicep can assign **AcrPush**, **AcrPull**, and the existing Contributor-on-RG role.
+4. **`az deployment sub create` / subscription scope from GHA** — Requires **subscription-level** deployment rights on the MI (e.g. subscription **Contributor**). Prefer **`deployment_scope: resource-group`** for routine runs if the resource group already exists and the MI only has RG-scoped roles.
+5. **`MissingSubscriptionRegistration` / `Microsoft.ContainerRegistry`** — Register resource providers once per subscription: **`az provider register --namespace Microsoft.ContainerRegistry --wait`** (and **`Microsoft.App`**, **`Microsoft.OperationalInsights`** for Container Apps / Log Analytics).
+6. **ACR name validation** — Registry names allow **only `a-z` and `0-9`**. Avoid **`uniqueString()`** alone in the name; use a **hex suffix** from **`guid(...)`** with hyphens stripped, and keep the same formula in **[`main.bicep`](infra/bicep/main.bicep)** (for RBAC `existing`) and **[`modules/acr.bicep`](infra/bicep/modules/acr.bicep)**.
+7. **`RoleDefinitionDoesNotExist` for AcrPush** — The built-in **AcrPush** role id must match Azure. Verify with **`az role definition list --query "[?roleName=='AcrPush'].name" -o tsv`** and use that GUID in **`main.bicep`** (do not rely on stale third-party lists).
+8. **Visibility of nested failures** — The workflow includes a **debug** step (on failure) that lists **`az deployment operation group list`** for the root deployment and the nested **`acr`** deployment; use the same commands locally with the deployment name from the run (**`gha-<run_id>`**).
+
+**Next steps (recommended)**
+
+1. **Images** — Build and **`docker push`** **Api** and **McpServer** to the deployed ACR; set **`apiImage`** / **`mcpImage`** in **[`infra/bicep/parameters/main.{env}.bicepparam`](infra/bicep/parameters/main.dev.bicepparam)** to **`${acrLoginServer}/<repo>:<tag>`** (or update revisions with **`az containerapp update`** / a pipeline job).
+2. **Prod** — Repeat provider registration (if a different subscription), RBAC, and a controlled **`prod`** workflow run with **`main.prod.bicepparam`**.
+3. **`readme` todo** — Extend **[`README.md`](README.md)** with a short Azure + GHA section pointing to **`docs/azure-bootstrap.md`** and **`docs/github-actions-setup.md`**, including default branch, **deployment_scope**, and the troubleshooting bullets above.
+
 ### User-assigned managed identity for GitHub Actions (OIDC)
 
 Provision a **user-assigned managed identity** per environment **in `rg-ai-mcp-server-demo-{env}`** at **`australiaeast`** with this **name pattern** ( `{env}` = `dev` | `prod` ):
@@ -139,7 +160,7 @@ On each identity, enable **federated identity credentials (FIC)** for **GitHub A
 
 Implement in Bicep using the **`Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials`** resource type (API version per current Bicep docs), parameterized with **`githubOrg`**, **`githubRepo`**, and **`environment`** so subjects are generated, not hard-coded secrets.
 
-**RBAC for deployment**: Grant this UAMI what it needs to deploy and operate the stack (e.g. **Contributor** on the target resource group, or finer-grained roles if you split responsibilities). Container Apps’ runtime identities can remain distinct **app** MIs with **AcrPull** only.
+**RBAC for deployment**: Grant this UAMI what it needs to deploy and operate the stack (e.g. **Contributor** on the target resource group, or finer-grained roles if you split responsibilities). Bicep that creates **role assignments** (AcrPush, AcrPull, Contributor on RG) also requires **User Access Administrator** or **Owner** on that resource group for the deployment identity—see **§ Azure / GHA deployment fixes** above. Container Apps’ runtime identities can remain distinct **app** MIs with **AcrPull** only.
 
 ### First run (bootstrap, Azure CLI) vs. ongoing (OIDC in GitHub)
 
@@ -168,7 +189,7 @@ Each module should have a clear `param` contract so Phase 1 and Phase 2 compose 
 | Workflow | Role |
 |----------|------|
 | **`ci.yml`** | On PR / push to default branch / configured branches: `dotnet restore/build/test`, optionally `docker build` to validate Dockerfiles (no push to Azure). |
-| **`deploy-azure.yml`** | **`azure/login`** (OIDC) + **`az deployment group create`** for **`infra/bicep/main.bicep`** (requires RG **`rg-ai-mcp-server-demo-{env}`** already); prints deployment outputs; then **`dotnet build/test`**. **Optional next:** **docker push** to ACR + **`az containerapp update`** or param-only redeploy for app images. Use **`jobs.<job>.environment: dev \| prod`**. |
+| **`deploy-azure.yml`** | **`azure/login`** (OIDC) + Bicep deploy (**`main.bicep`** or **`subscription.bicep`** per input) + deployment outputs + **`dotnet build/test`**. Optional input **Push app images** (default on): **Docker build/push** Api + McpServer to ACR (`api` / `mcpserver`, tag = commit SHA) + **`az containerapp update`** for **`ca-api-{env}`** / **`ca-mcp-{env}`**. Use **`jobs.<job>.environment: dev \| prod`**. |
 
 **Auth to Azure (after bootstrap)**:
 
@@ -340,7 +361,7 @@ flowchart LR
 3. Implement API + health + sample endpoints; **`launchSettings`** for Api; **multiple startup projects** (VS) and/or **`.vscode` compound launch** (VS Code) so both apps start for local debugging.
 4. Add Dockerfiles + `.dockerignore` + `docker-compose.yml`; verify `docker compose up --build`.
 5. **Bootstrap Phase 1 in Azure** using **Azure CLI** (document **`az group create`**, **`az identity create`**, **`az role assignment create`**, **`az identity federated-credential create`** for **`dev`** / **`prod`**). Optionally add **`infra/bicep`** later with **`managed-identity-github.bicep`** (and eventually **ACR + Container Apps**); validate Bicep with `az bicep build` / what-if when present.
-6. Add **`.github/workflows`** (`ci.yml`, `deploy-azure.yml` with **`environment: dev`** / **`prod`**); **`azure/login`** OIDC using each UAMI’s **client id**; Phase 1 deploy job = auth + build/test only; document GitHub Environments ↔ FIC subjects and variable names beside the bootstrap doc.
+6. Add **`.github/workflows`** (`ci.yml`, `deploy-azure.yml` with **`environment: dev`** / **`prod`**); **`azure/login`** OIDC using each UAMI’s **client id**; deploy job runs **Bicep** (`main.bicep` at RG scope by default, optional `subscription.bicep`) then **dotnet build/test**; document GitHub Environments ↔ FIC subjects and variables in **`docs/github-actions-setup.md`** beside **`docs/azure-bootstrap.md`**.
 7. README: **Local development** (prerequisites from the plan section, clone/restore, user secrets, **`dotnet run` vs IDE debug**, ports/URLs, when Docker is needed, **no Azure for day-to-day dev**); plus ports, health/OpenAPI/MCP URL, **configuration precedence**, **Azure** ( **`rg-ai-mcp-server-demo-{env}`**, **`australiaeast`**, **Phase 1 Azure CLI bootstrap** commands for RG + UAMI + FIC + RBAC, **Phase 2** **Container Apps** + ACR overview, **`MI_ai-mcp-server-demo-{env}`**, **OIDC** variables), and GitHub Environments.
 
 ### Local dev execution plan (step 3 / todo `local-dev`)

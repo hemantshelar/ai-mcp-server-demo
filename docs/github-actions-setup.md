@@ -99,7 +99,8 @@ At this point the job can resolve:
 4. Branch: **`feature/001-plan`** (this repo’s default branch — pick the branch that contains `.github/workflows/deploy-azure.yml`).
 5. **Environment** dropdown: choose **`dev`** or **`prod`** (must match a GitHub Environment you created).
 6. **Deployment scope** — **`resource-group`** (default): deploys **`main.bicep`** into **`rg-ai-mcp-server-demo-{env}`**; RG must exist. **`subscription`**: deploys **`subscription.bicep`** (creates/updates the RG and full stack). Requires **extra subscription-level RBAC** on **`MI_ai-mcp-server-demo-{env}`** for `az deployment sub create` to succeed (RG-only Contributor is not enough).
-7. **Run workflow**.
+7. **Push app images** — Leave **`push_app_images`** checked (**default**) to **Docker build** Api and McpServer from **`docker/*.Dockerfile`**, **push** to the ACR in that RG (`api` / `mcpserver` repos, tag = commit SHA), then **`az containerapp update`** on **`ca-api-{env}`** and **`ca-mcp-{env}`**. Uncheck for infra-only runs (Bicep + dotnet tests only).
+8. **Run workflow**.
 
 ### What “good” looks like
 
@@ -109,6 +110,7 @@ At this point the job can resolve:
 - **Deploy Bicep** (resource group or subscription step) — green.
 - **Show deployment outputs** — JSON including **`acrLoginServer`**, **`apiFqdn`**, etc.
 - **Restore, build, test** — green.
+- **Build and push images to ACR, update Container Apps** — green (when **Push app images** is enabled); logs show ACR login server and image tags.
 
 ---
 
@@ -119,6 +121,7 @@ At this point the job can resolve:
 | Run shows **Deploy Azure (Phase 1)** / only **verify-and-build** with no Bicep steps | GitHub uses the workflow from the **default** branch. Merge the branch that contains the current **[`.github/workflows/deploy-azure.yml`](../.github/workflows/deploy-azure.yml)** into **default**, or run the workflow from a branch that already has the updated file (Actions → Run workflow → select branch). |
 | **No ACR** / nested **`acr`** deployment failed | See the workflow step **Debug Azure deployment (resource group, on failure)** for JSON from `az deployment operation group list`, or run that command locally with the same `--name` as the GitHub run (`gha-<run_id>`). Common causes: **invalid registry name** (only `a-z0-9`), **Azure Policy**, or **soft-deleted** registry name conflict. |
 | **`MissingSubscriptionRegistration`** / **`Microsoft.ContainerRegistry`** | Register resource providers on the subscription (see [azure-bootstrap.md](azure-bootstrap.md) prerequisites block): `az provider register --namespace Microsoft.ContainerRegistry --wait` (and **`Microsoft.App`**, **`Microsoft.OperationalInsights`** for Container Apps / Log Analytics). |
+| **Docker push / `az containerapp update` fails** | Deployment MI needs **AcrPush** on the ACR (assigned by **`main.bicep`**). Confirm ACR name starts with **`acrmcp`** so the workflow can find it. For private runners, ensure **Docker** is available. |
 | **Authorization failed** on `az deployment sub create` | Grant **`MI_ai-mcp-server-demo-{env}`** a subscription-scope role that allows subscription-scoped deployments (e.g. **Contributor** on the subscription), or use **resource-group** scope after creating the RG manually. |
 | **Could not authenticate** / OIDC failed | FIC subject in Azure = `repo:ORG/REPO:environment:dev` (or `prod`) with exact ORG/REPO casing. |
 | **Variable not found** / empty `vars` | Variables are under **Actions → Variables**, not only **Secrets**. Names must be exactly **`AZURE_CLIENT_ID`**, **`AZURE_TENANT_ID`**, **`AZURE_SUBSCRIPTION_ID`**. |
