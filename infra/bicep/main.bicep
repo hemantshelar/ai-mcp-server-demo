@@ -22,7 +22,8 @@ param apiImage string
 param mcpImage string
 
 // Must stay in sync with modules/acr.bicep (used for RBAC resource refs evaluable at deploy start).
-var acrRegistryName = toLower('acrmcp${environment}${take(uniqueString(resourceGroup().id, environment), 11)}')
+var acrRegistrySuffix = take(replace(guid(resourceGroup().id, environment), '-', ''), 11)
+var acrRegistryName = toLower('acrmcp${environment}${acrRegistrySuffix}')
 
 module githubOidc 'modules/managed-identity-github.bicep' = {
   name: 'githubOidc'
@@ -84,3 +85,4 @@ output acrName string = acr.outputs.acrName
 output apiFqdn string = containerApps.outputs.apiFqdn
 output mcpFqdn string = containerApps.outputs.mcpFqdn
 output pullIdentityId string = containerApps.outputs.pullIdentityId
+

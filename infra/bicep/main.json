@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "9682767978698321562"
+      "templateHash": "4205741899597017626"
     }
   },
   "parameters": {
@@ -49,7 +49,8 @@
     }
   },
   "variables": {
-    "acrRegistryName": "[toLower(format('acrmcp{0}{1}', parameters('environment'), take(uniqueString(resourceGroup().id, parameters('environment')), 11)))]",
+    "acrRegistrySuffix": "[take(replace(guid(resourceGroup().id, parameters('environment')), '-', ''), 11)]",
+    "acrRegistryName": "[toLower(format('acrmcp{0}{1}', parameters('environment'), variables('acrRegistrySuffix')))]",
     "acrPushRoleDefinitionId": "8313e01d-4867-4548-9f17-63e7d96a1134"
   },
   "resources": [
@@ -223,7 +224,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "11875023650293480561"
+              "templateHash": "11142836131886419147"
             }
           },
           "parameters": {
@@ -238,7 +239,8 @@
             }
           },
           "variables": {
-            "registryName": "[toLower(format('acrmcp{0}{1}', parameters('environment'), take(uniqueString(resourceGroup().id, parameters('environment')), 11)))]"
+            "registrySuffix": "[take(replace(guid(resourceGroup().id, parameters('environment')), '-', ''), 11)]",
+            "registryName": "[toLower(format('acrmcp{0}{1}', parameters('environment'), variables('registrySuffix')))]"
           },
           "resources": [
             {
