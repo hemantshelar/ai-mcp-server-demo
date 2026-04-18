@@ -1,0 +1,49 @@
+# Phase 1: proves GitHub Actions OIDC to Azure (azure/login) and builds the solution.
+# No image push to ACR and no Container Apps deploy until Phase 2 (see plan.md).
+
+name: Deploy Azure (Phase 1 — OIDC)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: GitHub Environment name (must match federated credential subject)
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  verify-and-build:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Verify Azure session
+        run: az account show
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            9.0.x
+          global-json-file: global.json
+
+      - name: Restore, build, test
+        run: |
+          dotnet restore
+          dotnet build --no-restore -c Release
+          dotnet test --no-build -c Release --verbosity minimal

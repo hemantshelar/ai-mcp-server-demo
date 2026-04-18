@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+jobs:
+  dotnet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            9.0.x
+          global-json-file: global.json
+
+      - name: Restore and build
+        run: |
+          dotnet restore
+          dotnet build --no-restore -c Release
+
+      - name: Test
+        run: dotnet test --no-build -c Release --verbosity minimal
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Docker build (validate Dockerfiles)
+        run: |
+          docker build -f docker/Api.Dockerfile -t ai-mcp-api:ci .
+          docker build -f docker/McpServer.Dockerfile -t ai-mcp-mcp:ci .
