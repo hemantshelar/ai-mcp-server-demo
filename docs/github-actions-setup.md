@@ -1,6 +1,6 @@
 # GitHub Actions: end-to-end setup for Azure OIDC (deploy workflow)
 
-Goal: run **[`.github/workflows/deploy-azure.yml`](../.github/workflows/deploy-azure.yml)** successfully — **Azure login (OIDC)** → **`az account show`** → **dotnet build/test**.
+Goal: run **[`.github/workflows/deploy-azure.yml`](../.github/workflows/deploy-azure.yml)** successfully — **Azure login (OIDC)** → **`az deployment group create`** with **`infra/bicep/main.bicep`** (RG scope) → **deployment outputs** → **dotnet build/test**.
 
 The workflow reads **GitHub Actions variables** (`vars.*`), **not** repository secrets, unless you change the YAML.
 
@@ -8,12 +8,12 @@ The workflow reads **GitHub Actions variables** (`vars.*`), **not** repository s
 
 ## Prerequisites (complete before GitHub steps)
 
-1. **Azure Phase 1 is deployed** — resource group, user-assigned managed identity **`MI_ai-mcp-server-demo-{env}`**, federated credential (FIC) for GitHub. Use [azure-bootstrap.md](azure-bootstrap.md) (Bicep or CLI).
+1. **Azure Phase 1 is deployed** — resource group **`rg-ai-mcp-server-demo-{env}`**, user-assigned managed identity **`MI_ai-mcp-server-demo-{env}`**, federated credential (FIC) for GitHub, and **Contributor** on that RG for the MI. Use [azure-bootstrap.md](azure-bootstrap.md) (Bicep or CLI). The deploy workflow runs **`az deployment group create`** into that RG; it does **not** create the RG (use **`subscription.bicep`** or **`az group create`** once if needed).
 2. **FIC subject matches this repo** — must be exactly:
    - `repo:<YourGitHubOrgOrUser>/<YourRepoName>:environment:dev`
    - `repo:<YourGitHubOrgOrUser>/<YourRepoName>:environment:prod`  
    `<YourGitHubOrgOrUser>` and `<YourRepoName>` are **case-sensitive** and must match the repo GitHub shows in the URL bar.
-3. **Workflow file is on the repository default branch** — this repo uses **`feature/001-plan`**. Merge your workflow there so **Actions** lists **Deploy Azure (Phase 1 — OIDC)** (GitHub reads workflows from the **default** branch).
+3. **Workflow file is on the repository default branch** — this repo uses **`feature/001-plan`**. Merge your workflow there so **Actions** lists **Deploy Azure (Bicep + build)** (GitHub reads workflows from the **default** branch).
 4. **Collect three Azure values** (from `az` or portal):
 
    ```bash
@@ -94,7 +94,7 @@ At this point the job can resolve:
 ## Step 5 — Run the workflow
 
 1. **Actions** tab.
-2. Left sidebar → **Deploy Azure (Phase 1 — OIDC)**.
+2. Left sidebar → **Deploy Azure (Bicep + build)**.
 3. **Run workflow** (button on the right).
 4. Branch: **`feature/001-plan`** (this repo’s default branch — pick the branch that contains `.github/workflows/deploy-azure.yml`).
 5. **Environment** dropdown: choose **`dev`** or **`prod`** (must match a GitHub Environment you created).

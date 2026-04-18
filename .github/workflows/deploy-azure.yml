@@ -1,7 +1,8 @@
-# Phase 1: proves GitHub Actions OIDC to Azure (azure/login) and builds the solution.
-# No image push to ACR and no Container Apps deploy until Phase 2 (see plan.md).
+# OIDC via user-assigned MI → deploy infra/bicep/main.bicep (RG scope), then build/test.
+# Requires resource group rg-ai-mcp-server-demo-{env} to exist (one-time subscription.bicep or az group create).
+# MI must have Contributor on that RG (Phase 1 Bicep / bootstrap).
 
-name: Deploy Azure (Phase 1 — OIDC)
+name: Deploy Azure (Bicep + build)
 
 on:
   workflow_dispatch:
@@ -19,9 +20,12 @@ permissions:
   contents: read
 
 jobs:
-  verify-and-build:
+  deploy-and-verify:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
+    env:
+      RG_NAME: rg-ai-mcp-server-demo-${{ inputs.environment }}
+      DEPLOYMENT_NAME: gha-${{ github.run_id }}
     steps:
       - uses: actions/checkout@v4
 
@@ -34,6 +38,26 @@ jobs:
 
       - name: Verify Azure session
         run: az account show
+
+      - name: Ensure Azure Bicep CLI
+        run: az bicep version || az bicep install
+
+      - name: Deploy Bicep (resource group)
+        run: |
+          set -euo pipefail
+          az deployment group create \
+            --name "${{ env.DEPLOYMENT_NAME }}" \
+            --resource-group "${{ env.RG_NAME }}" \
+            --template-file infra/bicep/main.bicep \
+            --parameters "infra/bicep/parameters/main.${{ inputs.environment }}.bicepparam"
+
+      - name: Show deployment outputs
+        run: |
+          az deployment group show \
+            --resource-group "${{ env.RG_NAME }}" \
+            --name "${{ env.DEPLOYMENT_NAME }}" \
+            --query properties.outputs \
+            -o json
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4

@@ -12,11 +12,11 @@ todos:
     content: Multi-stage Dockerfiles, .dockerignore, docker-compose.yml with two services
     status: completed
   - id: bicep-azure
-    content: Phased—(1) Bootstrap RG + UAMI + FIC + RBAC via Azure CLI (doc); optional Bicep parity for same; (2) later ACR + Container Apps—rg-ai-mcp-server-demo-{env}, australiaeast, Dev/Prod params
+    content: "Phase 1 + 2 Bicep: UAMI/FIC + acr.bicep + container-apps.bicep (Api + McpServer), australiaeast; optional GHA push/update"
     status: pending
   - id: github-actions
     content: GHA workflows—CI + OIDC via UAMI; Phase 1 deploy = login + build/test only (no ACR/ACA until Phase 2); bootstrap steps live with Azure CLI doc
-    status: pending
+    status: completed
   - id: local-dev
     content: launchSettings (stable ports/URLs), optional VS Code compound launch, README prereqs + run/debug
     status: completed
@@ -168,7 +168,7 @@ Each module should have a clear `param` contract so Phase 1 and Phase 2 compose 
 | Workflow | Role |
 |----------|------|
 | **`ci.yml`** | On PR / push to default branch / configured branches: `dotnet restore/build/test`, optionally `docker build` to validate Dockerfiles (no push to Azure). |
-| **`deploy-azure.yml`** | **Phase 1 (CI/CD–only Azure):** After bootstrap, use **`azure/login`** (OIDC) + **`dotnet build/test`** (and optional **`docker build`**); **no** ACR push or Container Apps update until Phase 2 exists. **Phase 2:** Add jobs to **push** images to **ACR** and deploy/update **Azure Container Apps** via **`az deployment group create`** and/or **`az containerapp update`** with the correct **`.bicepparam`**. Use **`jobs.<job>.environment: dev \| prod`** so GitHub **Environment** rules and variables apply. |
+| **`deploy-azure.yml`** | **`azure/login`** (OIDC) + **`az deployment group create`** for **`infra/bicep/main.bicep`** (requires RG **`rg-ai-mcp-server-demo-{env}`** already); prints deployment outputs; then **`dotnet build/test`**. **Optional next:** **docker push** to ACR + **`az containerapp update`** or param-only redeploy for app images. Use **`jobs.<job>.environment: dev \| prod`**. |
 
 **Auth to Azure (after bootstrap)**:
 
