@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>AiMcpServerDemo.Hosting</RootNamespace>
+    <Description>Shared host configuration helpers (layered configuration for web apps).</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+</Project>
