@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "14299434558115087055"
+      "templateHash": "9682767978698321562"
     }
   },
   "parameters": {
@@ -48,7 +48,26 @@
       }
     }
   },
+  "variables": {
+    "acrRegistryName": "[toLower(format('acrmcp{0}{1}', parameters('environment'), take(uniqueString(resourceGroup().id, parameters('environment')), 11)))]",
+    "acrPushRoleDefinitionId": "8313e01d-4867-4548-9f17-63e7d96a1134"
+  },
   "resources": [
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.ContainerRegistry/registries', variables('acrRegistryName'))]",
+      "name": "[guid(subscription().subscriptionId, resourceGroup().id, variables('acrRegistryName'), variables('acrPushRoleDefinitionId'), 'github-actions-acrpush')]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('acrPushRoleDefinitionId'))]",
+        "principalId": "[reference(resourceId('Microsoft.Resources/deployments', 'githubOidc'), '2025-04-01').outputs.principalId.value]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'acr')]",
+        "[resourceId('Microsoft.Resources/deployments', 'githubOidc')]"
+      ]
+    },
     {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
@@ -195,9 +214,6 @@
           },
           "environment": {
             "value": "[parameters('environment')]"
-          },
-          "githubActionsPrincipalId": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'githubOidc'), '2025-04-01').outputs.principalId.value]"
           }
         },
         "template": {
@@ -207,7 +223,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "9506658245466619583"
+              "templateHash": "11875023650293480561"
             }
           },
           "parameters": {
@@ -219,17 +235,10 @@
               "metadata": {
                 "description": "Environment segment for naming."
               }
-            },
-            "githubActionsPrincipalId": {
-              "type": "string",
-              "metadata": {
-                "description": "Principal (object) id of MI_ai-mcp-server-demo-{env} — allows CI to push images."
-              }
             }
           },
           "variables": {
-            "registryName": "[toLower(format('acrmcp{0}{1}', parameters('environment'), take(uniqueString(resourceGroup().id, parameters('environment')), 11)))]",
-            "acrPushRoleDefinitionId": "8313e01d-4867-4548-9f17-63e7d96a1134"
+            "registryName": "[toLower(format('acrmcp{0}{1}', parameters('environment'), take(uniqueString(resourceGroup().id, parameters('environment')), 11)))]"
           },
           "resources": [
             {
@@ -244,20 +253,6 @@
                 "adminUserEnabled": false,
                 "publicNetworkAccess": "Enabled"
               }
-            },
-            {
-              "type": "Microsoft.Authorization/roleAssignments",
-              "apiVersion": "2022-04-01",
-              "scope": "[resourceId('Microsoft.ContainerRegistry/registries', variables('registryName'))]",
-              "name": "[guid(resourceId('Microsoft.ContainerRegistry/registries', variables('registryName')), parameters('githubActionsPrincipalId'), variables('acrPushRoleDefinitionId'))]",
-              "properties": {
-                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('acrPushRoleDefinitionId'))]",
-                "principalId": "[parameters('githubActionsPrincipalId')]",
-                "principalType": "ServicePrincipal"
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.ContainerRegistry/registries', variables('registryName'))]"
-              ]
             }
           ],
           "outputs": {
@@ -278,10 +273,7 @@
             }
           }
         }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', 'githubOidc')]"
-      ]
+      }
     },
     {
       "type": "Microsoft.Resources/deployments",
@@ -537,7 +529,8 @@
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', 'acr')]"
+        "[resourceId('Microsoft.Resources/deployments', 'acr')]",
+        "[extensionResourceId(resourceId('Microsoft.ContainerRegistry/registries', variables('acrRegistryName')), 'Microsoft.Authorization/roleAssignments', guid(subscription().subscriptionId, resourceGroup().id, variables('acrRegistryName'), variables('acrPushRoleDefinitionId'), 'github-actions-acrpush'))]"
       ]
     }
   ],
