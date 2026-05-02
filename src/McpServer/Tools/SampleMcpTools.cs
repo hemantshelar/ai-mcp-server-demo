@@ -16,6 +16,16 @@ public static class SampleMcpTools
     [McpServerTool, Description("Echoes the message back to the client.")]
     public static string Echo(string message) => message;
 
+    [McpServerTool, Description("Returns the input string with character order reversed.")]
+    public static string? ReverseString(string? text)
+    {
+        if (text is null || text.Length <= 1)
+            return text;
+        var chars = text.ToCharArray();
+        Array.Reverse(chars);
+        return new string(chars);
+    }
+
     [McpServerTool, Description("Returns the sample MCP server name and assembly version.")]
     public static string GetServerInfo()
     {
